@@ -4,6 +4,12 @@ loadEnv(process.env.NODE_ENV || 'development', process.cwd())
 
 const REDIS_URL = process.env.REDIS_URL
 
+// Fazer Cards module is registered only when an API key is configured, so the
+// app still boots locally without supplier credentials (US-2.1 / RUM-16).
+const fazerModules = process.env.FAZER_API_KEY
+  ? [{ resolve: './src/modules/fazer' }]
+  : []
+
 // Redis-backed modules are enabled only when REDIS_URL is set (staging/prod).
 // Locally without Redis, Medusa falls back to its in-memory defaults.
 const redisModules = REDIS_URL
@@ -58,6 +64,7 @@ module.exports = defineConfig({
     {
       resolve: './src/modules/digital-delivery',
     },
+    ...fazerModules,
     {
       // Local provider logs emails to the console in dev.
       // Swap for @medusajs/medusa/notification-sendgrid in production.
