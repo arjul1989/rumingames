@@ -50,5 +50,10 @@ module.exports = defineConfig({
       cookieSecret: process.env.COOKIE_SECRET,
     },
   },
-  modules: [...redisModules],
+  modules: [
+    ...redisModules,
+    {
+      resolve: './src/modules/supplier',
+    },
+  ],
 })
