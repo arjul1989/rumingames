@@ -25,6 +25,18 @@ class DigitalDeliveryModuleService extends MedusaService({
     }
     return decryptCode(delivery.code_encrypted)
   }
+
+  // Mark all deliveries of an order as refunded (US-3.5 / RUM-27).
+  async markOrderRefunded(orderId: string): Promise<number> {
+    const deliveries = await this.listDigitalDeliveries({ order_id: orderId })
+    if (!deliveries.length) {
+      return 0
+    }
+    await this.updateDigitalDeliveries(
+      deliveries.map((d) => ({ id: d.id, status: "refunded" as const }))
+    )
+    return deliveries.length
+  }
 }
 
 export default DigitalDeliveryModuleService
