@@ -58,5 +58,22 @@ module.exports = defineConfig({
     {
       resolve: './src/modules/digital-delivery',
     },
+    {
+      // Local provider logs emails to the console in dev.
+      // Swap for @medusajs/medusa/notification-sendgrid in production.
+      resolve: '@medusajs/medusa/notification',
+      options: {
+        providers: [
+          {
+            resolve: '@medusajs/medusa/notification-local',
+            id: 'local',
+            options: {
+              name: 'Local Notification Provider',
+              channels: ['email'],
+            },
+          },
+        ],
+      },
+    },
   ],
 })
