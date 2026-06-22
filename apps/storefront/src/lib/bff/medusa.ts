@@ -69,7 +69,9 @@ export async function medusaFetch<T = unknown>(
     const data = text ? safeJson(text) : null
     if (!res.ok) {
       const error =
-        (data && typeof data === "object" && (data as any).message) ||
+        (data &&
+          typeof data === "object" &&
+          (data as { message?: string }).message) ||
         `Medusa request failed (${res.status})`
       return { ok: false, status: res.status, data: null, error }
     }
