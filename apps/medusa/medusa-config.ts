@@ -91,6 +91,9 @@ module.exports = defineConfig({
     {
       resolve: './src/modules/digital-delivery',
     },
+    {
+      resolve: './src/modules/cms',
+    },
     ...fazerModules,
     ...paymentModules,
     {
