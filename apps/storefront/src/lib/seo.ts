@@ -1,11 +1,12 @@
 import type { Metadata } from "next"
 import { getBaseURL } from "@lib/util/env"
+import { ACTIVE_COUNTRY_CODES, DEFAULT_COUNTRY as DEFAULT_CC } from "@lib/countries"
 
 // Centralised SEO helpers (Epic 8 / RUM-52). MVP serves a single locale
-// (es-CO); the country list is kept here so hreflang and the sitemap can grow
-// as new countries go live.
-export const ACTIVE_COUNTRIES = ["co"] as const
-export const DEFAULT_COUNTRY = "co"
+// (es-CO); the active country list comes from the per-country config
+// (US-6.3 / RUM-43) so hreflang and the sitemap grow as new markets go live.
+export const ACTIVE_COUNTRIES = ACTIVE_COUNTRY_CODES
+export const DEFAULT_COUNTRY = DEFAULT_CC
 export const SITE_NAME = "Gorumin"
 export const OG_LOCALE = "es_CO"
 

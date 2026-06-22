@@ -50,6 +50,7 @@ export interface RelatedProduct {
   title: string
   handle: string
   thumbnail: string | null
+  variant_id: string | null
 }
 
 export interface ArticleTag {
@@ -100,6 +101,18 @@ export const listArticles = async ({
     return { articles: res.articles ?? [], count: res.count ?? 0 }
   } catch {
     return { articles: [], count: 0 }
+  }
+}
+
+export const listArticleCategories = async (): Promise<ArticleCategory[]> => {
+  try {
+    const res = await sdk.client.fetch<{ categories: ArticleCategory[] }>(
+      "/store/article-categories",
+      { method: "GET", next: { revalidate: 300 }, cache: "force-cache" }
+    )
+    return res.categories ?? []
+  } catch {
+    return []
   }
 }
 

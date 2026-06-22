@@ -17,10 +17,12 @@ export interface RelatedProduct {
   title: string
   handle: string
   thumbnail: string | null
+  /** First variant id, so the storefront can offer add-to-cart (US-7.3 / RUM-47). */
+  variant_id: string | null
 }
 
 // Resolves Medusa product details for an article's related_product_ids
-// (US-4.3 / RUM-31). Returns an empty array when there are none.
+// (US-4.3 / RUM-31, add-to-cart US-7.3 / RUM-47). Returns [] when there are none.
 export async function resolveRelatedProducts(
   container: MedusaContainer,
   productIds: unknown
@@ -32,10 +34,21 @@ export async function resolveRelatedProducts(
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const { data } = await query.graph({
     entity: "product",
-    fields: ["id", "title", "handle", "thumbnail"],
+    fields: ["id", "title", "handle", "thumbnail", "variants.id"],
     filters: { id: ids },
   })
+  const byId = new Map(
+    data.map((p: { id: string; title: string; handle: string; thumbnail: string | null; variants?: { id: string }[] }) => [
+      p.id,
+      {
+        id: p.id,
+        title: p.title,
+        handle: p.handle,
+        thumbnail: p.thumbnail ?? null,
+        variant_id: p.variants?.[0]?.id ?? null,
+      } as RelatedProduct,
+    ])
+  )
   // Preserve the editor-defined ordering.
-  const byId = new Map(data.map((p: RelatedProduct) => [p.id, p]))
   return ids.map((id) => byId.get(id)).filter(Boolean) as RelatedProduct[]
 }

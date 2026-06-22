@@ -1,9 +1,15 @@
 import { HttpTypes } from "@medusajs/types"
 import { NextRequest, NextResponse } from "next/server"
+import { isSupportedCountry } from "@lib/countries"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL
 const PUBLISHABLE_API_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
-const DEFAULT_REGION = process.env.NEXT_PUBLIC_DEFAULT_REGION || "dk"
+const DEFAULT_REGION = process.env.NEXT_PUBLIC_DEFAULT_REGION || "co"
+
+// Persisted detected country so we don't re-run geo detection on every visit
+// (US-6.1 / RUM-41).
+const COUNTRY_COOKIE = "gorumin_country"
+const COUNTRY_COOKIE_MAX_AGE = 60 * 60 * 24 * 30 // 30 days
 
 const regionMapCache = {
   regionMap: new Map<string, HttpTypes.StoreRegion>(),
@@ -74,6 +80,9 @@ async function getCountryCode(
 
   const urlCountryCode = request.nextUrl.pathname.split("/")[1]?.toLowerCase()
 
+  // Previously detected/selected country (avoids re-detecting on every visit).
+  const cookieCountryCode = request.cookies.get(COUNTRY_COOKIE)?.value?.toLowerCase()
+
   // Cloudflare Workers provides country via request.cf.country
   const cloudflareCountryCode = (request as { cf?: { country?: string } }).cf?.country?.toLowerCase()
 
@@ -82,12 +91,18 @@ async function getCountryCode(
     .get("x-vercel-ip-country")
     ?.toLowerCase()
 
+  // A geo-detected country is only honored if it is a live market; otherwise
+  // visitors from non-MVP countries fall back to the default (Colombia).
+  const geoCountry = [cloudflareCountryCode, vercelCountryCode].find(
+    (c) => c && isSupportedCountry(c) && regionMap.has(c)
+  )
+
   if (urlCountryCode && regionMap.has(urlCountryCode)) {
     countryCode = urlCountryCode
-  } else if (cloudflareCountryCode && regionMap.has(cloudflareCountryCode)) {
-    countryCode = cloudflareCountryCode
-  } else if (vercelCountryCode && regionMap.has(vercelCountryCode)) {
-    countryCode = vercelCountryCode
+  } else if (cookieCountryCode && regionMap.has(cookieCountryCode)) {
+    countryCode = cookieCountryCode
+  } else if (geoCountry) {
+    countryCode = geoCountry
   } else if (regionMap.has(DEFAULT_REGION)) {
     countryCode = DEFAULT_REGION
   } else if (regionMap.keys().next().value) {
@@ -95,6 +110,22 @@ async function getCountryCode(
   }
 
   return countryCode
+}
+
+// Sets the gorumin_country cookie when missing/stale so subsequent requests
+// skip geo detection (US-6.1 / RUM-41).
+function persistCountryCookie(
+  request: NextRequest,
+  response: NextResponse,
+  country: string
+) {
+  if (request.cookies.get(COUNTRY_COOKIE)?.value !== country) {
+    response.cookies.set(COUNTRY_COOKIE, country, {
+      maxAge: COUNTRY_COOKIE_MAX_AGE,
+      sameSite: "lax",
+      path: "/",
+    })
+  }
 }
 
 /**
@@ -117,14 +148,14 @@ export async function middleware(request: NextRequest) {
   const urlHasCountry = firstPathSegment === country.toLowerCase()
 
   if (urlHasCountry) {
+    const response = NextResponse.next()
     if (!cacheIdCookie) {
-      const response = NextResponse.next()
       response.cookies.set("_medusa_cache_id", cacheId, {
         maxAge: 60 * 60 * 24,
       })
-      return response
     }
-    return NextResponse.next()
+    persistCountryCookie(request, response, country)
+    return response
   }
 
   // if the url doesn't have the country, redirect to it
@@ -133,7 +164,9 @@ export async function middleware(request: NextRequest) {
   const queryString = request.nextUrl.search || ""
   const redirectUrl = `${request.nextUrl.origin}/${country}${redirectPath}${queryString}`
 
-  return NextResponse.redirect(redirectUrl, 307)
+  const response = NextResponse.redirect(redirectUrl, 307)
+  persistCountryCookie(request, response, country)
+  return response
 }
 
 export const config = {

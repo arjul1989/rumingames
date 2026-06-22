@@ -1,8 +1,9 @@
 import { Metadata } from "next"
 
-import { listArticles } from "@lib/data/cms"
+import { listArticles, listArticleCategories } from "@lib/data/cms"
 import { localizedAlternates } from "@lib/seo"
 import ArticleCard from "@modules/gorumin/components/article-card"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 export const metadata: Metadata = {
   title: "Noticias",
@@ -11,13 +12,33 @@ export const metadata: Metadata = {
   alternates: localizedAlternates("noticias"),
 }
 
-// News listing (US-7.3 / RUM-39). Category filtering is added in a later pass.
-export default async function NoticiasPage() {
-  const { articles } = await listArticles({ limit: 24 })
+type Props = {
+  searchParams: Promise<{ categoria?: string }>
+}
+
+// News listing with category filtering (US-7.3 / RUM-47).
+export default async function NoticiasPage(props: Props) {
+  const { categoria } = await props.searchParams
+
+  const categories = await listArticleCategories()
+  const activeCategory = categoria
+    ? categories.find((c) => c.slug === categoria)
+    : undefined
+
+  const { articles } = await listArticles({
+    limit: 24,
+    categoryId: activeCategory?.id,
+  })
+
+  const chipBase =
+    "rounded-full border px-4 py-1.5 font-mono text-label-caps tracking-widest transition-colors"
+  const chipActive = "border-primary bg-primary/90 text-on-primary"
+  const chipIdle =
+    "border-white/10 bg-surface-container/50 text-on-surface-variant hover:border-primary/50"
 
   return (
     <div className="content-container py-16">
-      <header className="mb-12 space-y-2">
+      <header className="mb-10 space-y-2">
         <p className="font-mono text-label-caps tracking-[0.3em] text-secondary">
           COMUNIDAD
         </p>
@@ -25,6 +46,31 @@ export default async function NoticiasPage() {
           Noticias
         </h1>
       </header>
+
+      {categories.length > 0 && (
+        <nav
+          aria-label="Filtrar por categoría"
+          className="mb-12 flex flex-wrap gap-3"
+        >
+          <LocalizedClientLink
+            href="/noticias"
+            className={`${chipBase} ${!activeCategory ? chipActive : chipIdle}`}
+          >
+            TODAS
+          </LocalizedClientLink>
+          {categories.map((category) => (
+            <LocalizedClientLink
+              key={category.id}
+              href={`/noticias?categoria=${category.slug}`}
+              className={`${chipBase} ${
+                activeCategory?.id === category.id ? chipActive : chipIdle
+              }`}
+            >
+              {category.name.toUpperCase()}
+            </LocalizedClientLink>
+          ))}
+        </nav>
+      )}
 
       {articles.length ? (
         <div className="grid grid-cols-1 gap-gutter md:grid-cols-2 lg:grid-cols-3">
@@ -34,7 +80,9 @@ export default async function NoticiasPage() {
         </div>
       ) : (
         <p className="text-on-surface-variant/70">
-          Aún no hay noticias publicadas. Vuelve pronto.
+          {activeCategory
+            ? `No hay noticias en “${activeCategory.name}” por ahora.`
+            : "Aún no hay noticias publicadas. Vuelve pronto."}
         </p>
       )}
     </div>
