@@ -10,6 +10,33 @@ const fazerModules = process.env.FAZER_API_KEY
   ? [{ resolve: './src/modules/fazer' }]
   : []
 
+// Mercado Pago payment provider is registered only when an access token is
+// configured (US-3.1 / RUM-23). Without it, Medusa keeps the system default
+// provider so checkout still works locally.
+const paymentModules = process.env.MP_ACCESS_TOKEN
+  ? [
+      {
+        resolve: '@medusajs/medusa/payment',
+        options: {
+          providers: [
+            {
+              resolve: './src/modules/payment-mercadopago',
+              id: 'mercadopago',
+              options: {
+                accessToken: process.env.MP_ACCESS_TOKEN,
+                publicKey: process.env.MP_PUBLIC_KEY,
+                webhookSecret: process.env.MP_WEBHOOK_SECRET,
+                locale: process.env.MP_LOCALE || 'es-CO',
+                notificationUrl: process.env.MP_NOTIFICATION_URL,
+                statementDescriptor: process.env.MP_STATEMENT_DESCRIPTOR || 'GORUMIN',
+              },
+            },
+          ],
+        },
+      },
+    ]
+  : []
+
 // Redis-backed modules are enabled only when REDIS_URL is set (staging/prod).
 // Locally without Redis, Medusa falls back to its in-memory defaults.
 const redisModules = REDIS_URL
@@ -65,6 +92,7 @@ module.exports = defineConfig({
       resolve: './src/modules/digital-delivery',
     },
     ...fazerModules,
+    ...paymentModules,
     {
       // Local provider logs emails to the console in dev.
       // Swap for @medusajs/medusa/notification-sendgrid in production.
