@@ -33,6 +33,34 @@ module.exports = {
           80: "#1F2937",
           90: "#111827",
         },
+        // Gorumin "Zero-UI" gaming palette (Stitch design system, Epic 7).
+        background: "#0b1326",
+        surface: "#0b1326",
+        "surface-dim": "#0b1326",
+        "surface-container-lowest": "#060e20",
+        "surface-container-low": "#131b2e",
+        "surface-container": "#171f33",
+        "surface-container-high": "#222a3d",
+        "surface-container-highest": "#2d3449",
+        "surface-variant": "#2d3449",
+        "surface-bright": "#31394d",
+        primary: "#ddb7ff",
+        "primary-container": "#b76dff",
+        "on-primary": "#490080",
+        "on-primary-container": "#400071",
+        secondary: "#4cd7f6",
+        "secondary-container": "#03b5d3",
+        "on-secondary": "#003640",
+        tertiary: "#ffb690",
+        "tertiary-container": "#ec6a06",
+        "on-tertiary-container": "#4a1c00",
+        "on-background": "#dae2fd",
+        "on-surface": "#dae2fd",
+        "on-surface-variant": "#cfc2d6",
+        outline: "#988d9f",
+        "outline-variant": "#4d4354",
+        error: "#ffb4ab",
+        "error-container": "#93000a",
       },
       borderRadius: {
         none: "0px",
@@ -41,9 +69,6 @@ module.exports = {
         rounded: "8px",
         large: "16px",
         circle: "9999px",
-      },
-      maxWidth: {
-        "8xl": "100rem",
       },
       screens: {
         "2xsmall": "320px",
@@ -56,9 +81,24 @@ module.exports = {
       },
       fontSize: {
         "3xl": "2rem",
+        "display-lg": ["48px", { lineHeight: "1.1", letterSpacing: "-0.02em", fontWeight: "800" }],
+        "display-lg-mobile": ["32px", { lineHeight: "1.2", fontWeight: "800" }],
+        "headline-md": ["24px", { lineHeight: "1.3", fontWeight: "700" }],
+        "label-caps": ["12px", { lineHeight: "1.0", letterSpacing: "0.1em", fontWeight: "600" }],
+      },
+      spacing: {
+        base: "8px",
+        gutter: "24px",
+        "margin-mobile": "16px",
+        "margin-desktop": "64px",
+      },
+      maxWidth: {
+        "8xl": "100rem",
+        "container-max": "1280px",
       },
       fontFamily: {
         sans: [
+          "var(--font-hanken)",
           "Inter",
           "-apple-system",
           "BlinkMacSystemFont",
@@ -68,6 +108,11 @@ module.exports = {
           "Ubuntu",
           "sans-serif",
         ],
+        // Gorumin type roles backed by next/font CSS variables.
+        display: ["var(--font-sora)", "sans-serif"],
+        headline: ["var(--font-sora)", "sans-serif"],
+        body: ["var(--font-hanken)", "sans-serif"],
+        mono: ["var(--font-jetbrains)", "monospace"],
       },
       keyframes: {
         ring: {
@@ -139,6 +184,26 @@ module.exports = {
           "0%": { transform: "translateY(-100%)" },
           "100%": { transform: "translateY(0)" },
         },
+        "fade-in-up": {
+          "0%": { opacity: "0", transform: "translateY(20px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+        scan: {
+          "0%": { top: "0%" },
+          "100%": { top: "100%" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-14px)" },
+        },
+        "spin-slow": {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
       },
       animation: {
         ring: "ring 2.2s cubic-bezier(0.5, 0, 0.5, 1) infinite",
@@ -154,6 +219,11 @@ module.exports = {
         enter: "enter 200ms ease-out",
         "slide-in": "slide-in 1.2s cubic-bezier(.41,.73,.51,1.02)",
         leave: "leave 150ms ease-in forwards",
+        "fade-in-up": "fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        shimmer: "shimmer 3s infinite linear",
+        scan: "scan 8s linear infinite",
+        float: "float 6s ease-in-out infinite",
+        "spin-slow": "spin-slow 14s linear infinite",
       },
     },
   },

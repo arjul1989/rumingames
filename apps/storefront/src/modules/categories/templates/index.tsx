@@ -1,18 +1,14 @@
 import { notFound } from "next/navigation"
-import { Suspense } from "react"
 
-import InteractiveLink from "@modules/common/components/interactive-link"
-import SkeletonProductGrid from "@modules/skeletons/templates/skeleton-product-grid"
-import RefinementList from "@modules/store/components/refinement-list"
-import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
-import PaginatedProducts from "@modules/store/templates/paginated-products"
+import { listProducts } from "@lib/data/products"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import ProductCard from "@modules/gorumin/components/product-card"
+import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import { HttpTypes } from "@medusajs/types"
 
-export default function CategoryTemplate({
+// Category listing with the Gorumin design system (US-7.5 / RUM-41).
+export default async function CategoryTemplate({
   category,
-  sortBy,
-  page,
   countryCode,
 }: {
   category: HttpTypes.StoreProductCategory
@@ -20,78 +16,81 @@ export default function CategoryTemplate({
   page?: string
   countryCode: string
 }) {
-  const pageNumber = page ? parseInt(page) : 1
-  const sort = sortBy || "created_at"
-
   if (!category || !countryCode) notFound()
 
-  const parents = [] as HttpTypes.StoreProductCategory[]
+  const { response } = await listProducts({
+    countryCode,
+    queryParams: {
+      category_id: [category.id],
+      limit: 48,
+    } as HttpTypes.StoreProductListParams,
+  }).catch(() => ({ response: { products: [], count: 0 } }))
 
-  const getParents = (category: HttpTypes.StoreProductCategory) => {
-    if (category.parent_category) {
-      parents.push(category.parent_category)
-      getParents(category.parent_category)
+  const products = response.products
+
+  const parents: HttpTypes.StoreProductCategory[] = []
+  const collectParents = (c: HttpTypes.StoreProductCategory) => {
+    if (c.parent_category) {
+      parents.push(c.parent_category)
+      collectParents(c.parent_category)
     }
   }
-
-  getParents(category)
+  collectParents(category)
 
   return (
-    <div
-      className="flex flex-col small:flex-row small:items-start py-6 content-container"
-      data-testid="category-container"
-    >
-      <RefinementList sortBy={sort} data-testid="sort-by-container" />
-      <div className="w-full">
-        <div className="flex flex-row mb-8 text-2xl-semi gap-4">
-          {parents &&
-            parents.map((parent) => (
-              <span key={parent.id} className="text-ui-fg-subtle">
-                <LocalizedClientLink
-                  className="mr-4 hover:text-black"
-                  href={`/categories/${parent.handle}`}
-                  data-testid="sort-by-link"
-                >
-                  {parent.name}
-                </LocalizedClientLink>
-                /
-              </span>
-            ))}
-          <h1 data-testid="category-page-title">{category.name}</h1>
-        </div>
+    <div className="content-container py-16">
+      <header className="mb-12 space-y-3">
+        <nav className="flex flex-wrap items-center gap-2 font-mono text-label-caps tracking-widest text-on-surface-variant/60">
+          <LocalizedClientLink href="/store" className="hover:text-secondary">
+            TIENDA
+          </LocalizedClientLink>
+          {parents.reverse().map((parent) => (
+            <span key={parent.id} className="flex items-center gap-2">
+              <span>/</span>
+              <LocalizedClientLink
+                href={`/categories/${parent.handle}`}
+                className="hover:text-secondary"
+              >
+                {parent.name.toUpperCase()}
+              </LocalizedClientLink>
+            </span>
+          ))}
+        </nav>
+        <h1 className="font-display text-4xl font-extrabold text-primary md:text-5xl">
+          {category.name}
+        </h1>
         {category.description && (
-          <div className="mb-8 text-base-regular">
-            <p>{category.description}</p>
-          </div>
+          <p className="max-w-2xl text-on-surface-variant/70">
+            {category.description}
+          </p>
         )}
-        {category.category_children && (
-          <div className="mb-8 text-base-large">
-            <ul className="grid grid-cols-1 gap-2">
-              {category.category_children?.map((c) => (
-                <li key={c.id}>
-                  <InteractiveLink href={`/categories/${c.handle}`}>
-                    {c.name}
-                  </InteractiveLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <Suspense
-          fallback={
-            <SkeletonProductGrid
-              numberOfProducts={category.products?.length ?? 8}
-            />
-          }
-        >
-          <PaginatedProducts
-            sortBy={sort}
-            page={pageNumber}
-            categoryId={category.id}
-            countryCode={countryCode}
-          />
-        </Suspense>
-      </div>
+      </header>
+
+      {category.category_children && category.category_children.length > 0 && (
+        <div className="mb-10 flex flex-wrap gap-3">
+          {category.category_children.map((child) => (
+            <LocalizedClientLink
+              key={child.id}
+              href={`/categories/${child.handle}`}
+              className="rounded-full border border-white/10 bg-surface-container/50 px-4 py-2 font-mono text-label-caps tracking-widest text-on-surface-variant transition-colors hover:border-secondary hover:text-secondary"
+            >
+              {child.name.toUpperCase()}
+            </LocalizedClientLink>
+          ))}
+        </div>
+      )}
+
+      {products.length ? (
+        <div className="grid grid-cols-2 gap-gutter md:grid-cols-3 lg:grid-cols-4">
+          {products.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      ) : (
+        <p className="text-on-surface-variant/70">
+          No hay productos en esta categoría todavía.
+        </p>
+      )}
     </div>
   )
 }

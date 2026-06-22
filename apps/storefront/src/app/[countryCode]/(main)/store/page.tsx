@@ -1,33 +1,39 @@
 import { Metadata } from "next"
 
-import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
-import StoreTemplate from "@modules/store/templates"
+import { listProducts } from "@lib/data/products"
+import { listCategories } from "@lib/data/categories"
+import StoreTemplate from "@modules/gorumin/templates/store"
 
 export const metadata: Metadata = {
-  title: "Store",
-  description: "Explore all of our products.",
+  title: "Tienda — Gorumin",
+  description:
+    "Gift cards, recargas y suscripciones de videojuegos con entrega digital inmediata. Steam, PlayStation, Nintendo, Xbox, Riot y Free Fire.",
 }
 
 type Params = {
-  searchParams: Promise<{
-    sortBy?: SortOptions
-    page?: string
-  }>
-  params: Promise<{
-    countryCode: string
-  }>
+  params: Promise<{ countryCode: string }>
 }
 
 export default async function StorePage(props: Params) {
-  const params = await props.params;
-  const searchParams = await props.searchParams;
-  const { sortBy, page } = searchParams
+  const { countryCode } = await props.params
+
+  const [productsResult, categories] = await Promise.all([
+    listProducts({
+      countryCode,
+      queryParams: { limit: 24 },
+    }).catch(() => ({ response: { products: [], count: 0 } })),
+    listCategories().catch(() => []),
+  ])
+
+  // Top-level categories only (platforms).
+  const platformCategories = (categories || []).filter(
+    (c) => !c.parent_category
+  )
 
   return (
     <StoreTemplate
-      sortBy={sortBy}
-      page={page}
-      countryCode={params.countryCode}
+      products={productsResult.response.products}
+      categories={platformCategories}
     />
   )
 }

@@ -1,42 +1,44 @@
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import ChevronDown from "@modules/common/icons/chevron-down"
-import MedusaCTA from "@modules/layout/components/medusa-cta"
 
+// Gorumin checkout shell (US-7.6 / RUM-42). Dark themed, minimal chrome.
+// The payment flow itself (Mercado Pago) is wired in Epic 3.
 export default function CheckoutLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
-    <div className="w-full bg-white relative small:min-h-screen">
-      <div className="h-16 bg-white border-b ">
-        <nav className="flex h-full items-center content-container justify-between">
+    <div className="relative min-h-screen w-full bg-background">
+      <div className="h-16 border-b border-white/10 bg-surface-dim/70 backdrop-blur-xl">
+        <nav className="content-container flex h-full items-center justify-between">
           <LocalizedClientLink
             href="/cart"
-            className="text-small-semi text-ui-fg-base flex items-center gap-x-2 uppercase flex-1 basis-0"
+            className="flex items-center gap-2 font-mono text-label-caps tracking-widest text-on-surface-variant transition-colors hover:text-primary"
             data-testid="back-to-cart-link"
           >
-            <ChevronDown className="rotate-90" size={16} />
-            <span className="mt-px hidden small:block txt-compact-plus text-ui-fg-subtle hover:text-ui-fg-base ">
-              Back to shopping cart
+            <span className="material-symbols-outlined text-base">
+              chevron_left
             </span>
-            <span className="mt-px block small:hidden txt-compact-plus text-ui-fg-subtle hover:text-ui-fg-base">
-              Back
-            </span>
+            <span className="hidden sm:inline">VOLVER AL CARRITO</span>
+            <span className="sm:hidden">VOLVER</span>
           </LocalizedClientLink>
           <LocalizedClientLink
             href="/"
-            className="txt-compact-xlarge-plus text-ui-fg-subtle hover:text-ui-fg-base uppercase"
+            className="font-display text-xl font-extrabold tracking-tighter text-primary drop-shadow-[0_0_15px_rgba(221,183,255,0.6)]"
             data-testid="store-link"
           >
-            Medusa Store
+            GORUMIN
           </LocalizedClientLink>
-          <div className="flex-1 basis-0" />
+          <div className="flex items-center gap-2 font-mono text-label-caps tracking-widest text-on-surface-variant/50">
+            <span className="material-symbols-outlined text-base text-secondary">
+              lock
+            </span>
+            <span className="hidden sm:inline">PAGO SEGURO</span>
+          </div>
         </nav>
       </div>
-      <div className="relative" data-testid="checkout-container">{children}</div>
-      <div className="py-4 w-full flex items-center justify-center">
-        <MedusaCTA />
+      <div className="relative" data-testid="checkout-container">
+        {children}
       </div>
     </div>
   )

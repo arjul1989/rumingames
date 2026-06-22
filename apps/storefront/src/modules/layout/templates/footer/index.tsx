@@ -1,157 +1,84 @@
-import { listCategories } from "@lib/data/categories";
-import { listCollections } from "@lib/data/collections";
-import { Text, clx } from "@modules/common/components/ui";
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
-import LocalizedClientLink from "@modules/common/components/localized-client-link";
-import MedusaCTA from "@modules/layout/components/medusa-cta";
+// Gorumin global footer (US-7.1 / RUM-37). Community + store + legal links and
+// the active country (Colombia in the MVP).
+const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
+  {
+    title: "TIENDA",
+    links: [
+      { href: "/store", label: "Gift Cards" },
+      { href: "/store", label: "Recargas" },
+      { href: "/store", label: "Suscripciones" },
+    ],
+  },
+  {
+    title: "COMUNIDAD",
+    links: [
+      { href: "/noticias", label: "Noticias" },
+      { href: "/streamers", label: "Streamers" },
+    ],
+  },
+  {
+    title: "LEGAL",
+    links: [
+      { href: "/terminos", label: "Términos" },
+      { href: "/privacidad", label: "Privacidad" },
+      { href: "/contacto", label: "Contacto" },
+    ],
+  },
+]
 
 export default async function Footer() {
-  const { collections } = await listCollections({
-    fields: "*products",
-  });
-  const productCategories = await listCategories();
-
   return (
-    <footer className="border-t border-ui-border-base w-full">
-      <div className="content-container flex flex-col w-full">
-        <div className="flex flex-col gap-y-6 xsmall:flex-row items-start justify-between py-40">
-          <div>
+    <footer className="w-full border-t border-white/5 bg-gradient-to-t from-surface-dim to-transparent">
+      <div className="content-container flex flex-col py-16">
+        <div className="flex flex-col gap-12 md:flex-row md:justify-between">
+          <div className="space-y-3">
             <LocalizedClientLink
               href="/"
-              className="txt-compact-xlarge-plus text-ui-fg-subtle hover:text-ui-fg-base uppercase"
+              className="font-display text-3xl font-extrabold text-primary drop-shadow-[0_0_15px_rgba(221,183,255,0.5)]"
             >
-              Medusa Store
+              GORUMIN
             </LocalizedClientLink>
+            <p className="max-w-xs text-sm text-on-surface-variant/70">
+              Gift cards y recargas de videojuegos para la comunidad gamer de
+              Colombia.
+            </p>
+            <p className="font-mono text-label-caps tracking-widest text-secondary">
+              🇨🇴 COLOMBIA · COP
+            </p>
           </div>
-          <div className="text-small-regular gap-10 md:gap-x-16 grid grid-cols-2 sm:grid-cols-3">
-            {productCategories && productCategories?.length > 0 && (
-              <div className="flex flex-col gap-y-2">
-                <span className="txt-small-plus txt-ui-fg-base">
-                  Categories
-                </span>
-                <ul
-                  className="grid grid-cols-1 gap-2"
-                  data-testid="footer-categories"
-                >
-                  {productCategories?.slice(0, 6).map((c) => {
-                    if (c.parent_category) {
-                      return;
-                    }
 
-                    const children =
-                      c.category_children?.map((child) => ({
-                        name: child.name,
-                        handle: child.handle,
-                        id: child.id,
-                      })) || null;
-
-                    return (
-                      <li
-                        className="flex flex-col gap-2 text-ui-fg-subtle txt-small"
-                        key={c.id}
-                      >
-                        <LocalizedClientLink
-                          className={clx(
-                            "hover:text-ui-fg-base",
-                            children && "txt-small-plus"
-                          )}
-                          href={`/categories/${c.handle}`}
-                          data-testid="category-link"
-                        >
-                          {c.name}
-                        </LocalizedClientLink>
-                        {children && (
-                          <ul className="grid grid-cols-1 ml-3 gap-2">
-                            {children &&
-                              children.map((child) => (
-                                <li key={child.id}>
-                                  <LocalizedClientLink
-                                    className="hover:text-ui-fg-base"
-                                    href={`/categories/${child.handle}`}
-                                    data-testid="category-link"
-                                  >
-                                    {child.name}
-                                  </LocalizedClientLink>
-                                </li>
-                              ))}
-                          </ul>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
-            {collections && collections.length > 0 && (
-              <div className="flex flex-col gap-y-2">
-                <span className="txt-small-plus txt-ui-fg-base">
-                  Collections
+          <div className="grid grid-cols-2 gap-10 sm:grid-cols-3">
+            {COLUMNS.map((col) => (
+              <div key={col.title} className="flex flex-col gap-y-3">
+                <span className="font-mono text-label-caps tracking-widest text-on-surface">
+                  {col.title}
                 </span>
-                <ul
-                  className={clx(
-                    "grid grid-cols-1 gap-2 text-ui-fg-subtle txt-small",
-                    {
-                      "grid-cols-2": (collections?.length || 0) > 3,
-                    }
-                  )}
-                >
-                  {collections?.slice(0, 6).map((c) => (
-                    <li key={c.id}>
+                <ul className="flex flex-col gap-y-2">
+                  {col.links.map((link, i) => (
+                    <li key={`${link.href}-${i}`}>
                       <LocalizedClientLink
-                        className="hover:text-ui-fg-base"
-                        href={`/collections/${c.handle}`}
+                        href={link.href}
+                        className="text-sm text-on-surface-variant/70 transition-colors hover:text-secondary"
                       >
-                        {c.title}
+                        {link.label}
                       </LocalizedClientLink>
                     </li>
                   ))}
                 </ul>
               </div>
-            )}
-            <div className="flex flex-col gap-y-2">
-              <span className="txt-small-plus txt-ui-fg-base">Medusa</span>
-              <ul className="grid grid-cols-1 gap-y-2 text-ui-fg-subtle txt-small">
-                <li>
-                  <a
-                    href="https://github.com/medusajs"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-ui-fg-base"
-                  >
-                    GitHub
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://docs.medusajs.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-ui-fg-base"
-                  >
-                    Documentation
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://github.com/medusajs/dtc-starter"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-ui-fg-base"
-                  >
-                    Source code
-                  </a>
-                </li>
-              </ul>
-            </div>
+            ))}
           </div>
         </div>
-        <div className="flex w-full mb-16 justify-between text-ui-fg-muted">
-          <Text className="txt-compact-small">
-            © {new Date().getFullYear()} Medusa Store. All rights reserved.
-          </Text>
-          <MedusaCTA />
+
+        <div className="mt-12 border-t border-white/5 pt-6">
+          <p className="font-mono text-xs text-on-surface-variant/40">
+            © {new Date().getFullYear()} Gorumin — rumingames. Todos los
+            derechos reservados.
+          </p>
         </div>
       </div>
     </footer>
-  );
+  )
 }

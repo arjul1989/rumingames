@@ -1,41 +1,41 @@
 import { Metadata } from "next"
 
-import FeaturedProducts from "@modules/home/components/featured-products"
-import Hero from "@modules/home/components/hero"
-import { listCollections } from "@lib/data/collections"
-import { getRegion } from "@lib/data/regions"
+import { listProducts } from "@lib/data/products"
+import { listArticles, listStreamers } from "@lib/data/cms"
+import HomeTemplate from "@modules/gorumin/templates/home"
 
 export const metadata: Metadata = {
-  title: "Medusa Next.js Starter Template",
+  title: "Gorumin — Gift cards y recargas de videojuegos en Colombia",
   description:
-    "A performant frontend ecommerce starter template with Next.js 15 and Medusa.",
+    "Compra gift cards y recargas de Steam, PlayStation, Riot, Xbox y más con entrega digital inmediata. Noticias y streamers de la comunidad gamer colombiana.",
 }
 
 export default async function Home(props: {
   params: Promise<{ countryCode: string }>
 }) {
-  const params = await props.params
+  const { countryCode } = await props.params
 
-  const { countryCode } = params
+  const [productsResult, articlesResult, featuredStreamers] = await Promise.all(
+    [
+      listProducts({
+        countryCode,
+        queryParams: { limit: 8 },
+      }).catch(() => ({ response: { products: [], count: 0 } })),
+      listArticles({ limit: 6 }),
+      listStreamers({ featured: true, limit: 12 }),
+    ]
+  )
 
-  const region = await getRegion(countryCode)
-
-  const { collections } = await listCollections({
-    fields: "id, handle, title",
-  })
-
-  if (!collections || !region) {
-    return null
-  }
+  // Fall back to all streamers if none are flagged as featured yet.
+  const streamers = featuredStreamers.streamers.length
+    ? featuredStreamers.streamers
+    : (await listStreamers({ limit: 12 })).streamers
 
   return (
-    <>
-      <Hero />
-      <div className="py-12">
-        <ul className="flex flex-col gap-x-6">
-          <FeaturedProducts collections={collections} region={region} />
-        </ul>
-      </div>
-    </>
+    <HomeTemplate
+      products={productsResult.response.products}
+      articles={articlesResult.articles}
+      streamers={streamers}
+    />
   )
 }

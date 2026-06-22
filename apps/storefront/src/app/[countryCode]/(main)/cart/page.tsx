@@ -1,12 +1,12 @@
 import { retrieveCart } from "@lib/data/cart"
 import { retrieveCustomer } from "@lib/data/customer"
-import CartTemplate from "@modules/cart/templates"
+import CartTemplate from "@modules/gorumin/templates/cart"
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 export const metadata: Metadata = {
-  title: "Cart",
-  description: "View your cart",
+  title: "Carrito — Gorumin",
+  description: "Revisa tu carrito de compras.",
 }
 
 export default async function Cart() {
