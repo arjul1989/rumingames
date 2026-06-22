@@ -9,6 +9,10 @@ on:
 jobs:
   lint-build:
     runs-on: ubuntu-latest
+    env:
+      # Public key — `next.config.js` validates its presence when running
+      # `next lint`. A placeholder is enough for linting/typecheck in CI.
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: pk_ci_placeholder
     steps:
       - name: Checkout
         uses: actions/checkout@v4
