@@ -10,6 +10,7 @@ import {
   createInventoryLevelsWorkflow,
   createProductCategoriesWorkflow,
   createProductsWorkflow,
+  createProductTypesWorkflow,
   createRegionsWorkflow,
   createSalesChannelsWorkflow,
   createShippingOptionsWorkflow,
@@ -19,6 +20,7 @@ import {
   linkSalesChannelsToApiKeyWorkflow,
   linkSalesChannelsToStockLocationWorkflow,
 } from "@medusajs/medusa/core-flows";
+import { CATALOG, PLATFORM_LABELS, PRODUCT_TYPES } from "../data/catalog";
 
 // Gorumin — Colombia (RUM-10 / US-1.1). Single launch market: COP, country "co".
 export default async function initial_data_seed({
@@ -227,82 +229,76 @@ export default async function initial_data_seed({
   });
   logger.info("Finished seeding stock location data.");
 
-  logger.info("Seeding product data (gift card categories)...");
+  logger.info("Seeding product types...");
+  const { result: productTypeResult } = await createProductTypesWorkflow(
+    container
+  ).run({
+    input: {
+      product_types: PRODUCT_TYPES.map((value) => ({ value })),
+    },
+  });
+  const productTypeIdByValue = new Map(
+    productTypeResult.map((t) => [t.value, t.id])
+  );
+  logger.info("Finished seeding product types.");
 
+  logger.info("Seeding product categories...");
+  // One category per platform present in the catalog.
+  const platformsInCatalog = Array.from(
+    new Set(CATALOG.map((p) => p.platform))
+  );
   const { result: categoryResult } = await createProductCategoriesWorkflow(
     container
   ).run({
     input: {
-      product_categories: [
-        { name: "Steam", is_active: true },
-        { name: "PlayStation", is_active: true },
-        { name: "Nintendo", is_active: true },
-        { name: "Xbox", is_active: true },
-        { name: "Riot Games", is_active: true },
-        { name: "Free Fire", is_active: true },
-      ],
+      product_categories: platformsInCatalog.map((platform) => ({
+        name: PLATFORM_LABELS[platform],
+        is_active: true,
+      })),
     },
   });
+  const categoryIdByName = new Map(categoryResult.map((c) => [c.name, c.id]));
+  logger.info("Finished seeding categories.");
 
-  const steamCategory = categoryResult.find((c) => c.name === "Steam")!;
-
-  // Example gift card. Real catalog is synced from Fazer Cards in Epic 2 (RUM-15).
+  logger.info("Seeding product data (digital catalog)...");
+  // Real catalog is synced from Fazer Cards in Epic 2 (RUM-15).
   await createProductsWorkflow(container).run({
     input: {
-      products: [
-        {
-          title: "Steam Gift Card",
-          category_ids: [steamCategory.id],
-          description:
-            "Recarga tu billetera de Steam y compra juegos, DLC y más. Entrega digital inmediata.",
-          handle: "steam-gift-card",
-          status: ProductStatus.PUBLISHED,
-          shipping_profile_id: shippingProfile.id,
-          metadata: {
-            platform: "steam",
-            delivery_type: "digital_code",
-            region: "co",
-          },
-          images: [
-            {
-              url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/tee-black-front.png",
-            },
-          ],
-          options: [
-            {
-              title: "Valor",
-              values: ["20.000 COP", "50.000 COP", "100.000 COP"],
-            },
-          ],
-          variants: [
-            {
-              title: "20.000 COP",
-              sku: "STEAM-CO-20000",
-              options: { Valor: "20.000 COP" },
-              metadata: { fazer_sku_id: "" },
-              prices: [{ amount: 20000, currency_code: "cop" }],
-            },
-            {
-              title: "50.000 COP",
-              sku: "STEAM-CO-50000",
-              options: { Valor: "50.000 COP" },
-              metadata: { fazer_sku_id: "" },
-              prices: [{ amount: 50000, currency_code: "cop" }],
-            },
-            {
-              title: "100.000 COP",
-              sku: "STEAM-CO-100000",
-              options: { Valor: "100.000 COP" },
-              metadata: { fazer_sku_id: "" },
-              prices: [{ amount: 100000, currency_code: "cop" }],
-            },
-          ],
-          sales_channels: [{ id: defaultSalesChannel.id }],
+      products: CATALOG.map((product) => ({
+        title: product.title,
+        handle: product.handle,
+        description: product.description,
+        status: ProductStatus.PUBLISHED,
+        type_id: productTypeIdByValue.get(product.product_type),
+        category_ids: [categoryIdByName.get(PLATFORM_LABELS[product.platform])!],
+        shipping_profile_id: shippingProfile.id,
+        metadata: {
+          platform: product.platform,
+          product_type: product.product_type,
+          delivery_type: product.delivery_type,
+          region: "co",
         },
-      ],
+        options: [
+          {
+            title: product.option_title,
+            values: product.variants.map((v) => v.label),
+          },
+        ],
+        variants: product.variants.map((v) => ({
+          title: v.label,
+          sku: v.sku,
+          options: { [product.option_title]: v.label },
+          metadata: {
+            fazer_sku_id: v.fazer_sku_id ?? "",
+            face_value_usd: v.face_value_usd ?? null,
+          },
+          prices: [{ amount: v.cop, currency_code: "cop" }],
+        })),
+        sales_channels: [{ id: defaultSalesChannel.id }],
+      })),
     },
   });
-  logger.info("Finished seeding product data.");
+  logger.info(`Finished seeding ${CATALOG.length} products.`);
 
   logger.info("Seeding inventory levels.");
   const { data: inventoryItems } = await query.graph({
