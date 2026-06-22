@@ -1,4 +1,10 @@
+import { Metadata } from "next"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+
+// Private flow — keep it out of search results (Epic 8 / US-8.1).
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 // Gorumin checkout shell (US-7.6 / RUM-42). Dark themed, minimal chrome.
 // The payment flow itself (Mercado Pago) is wired in Epic 3.

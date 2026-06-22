@@ -1,12 +1,14 @@
 import { Metadata } from "next"
 
 import { listArticles } from "@lib/data/cms"
+import { localizedAlternates } from "@lib/seo"
 import ArticleCard from "@modules/gorumin/components/article-card"
 
 export const metadata: Metadata = {
-  title: "Noticias — Gorumin",
+  title: "Noticias",
   description:
     "Lo último del mundo gaming: lanzamientos, esports, reviews y guías de la comunidad Gorumin.",
+  alternates: localizedAlternates("noticias"),
 }
 
 // News listing (US-7.3 / RUM-39). Category filtering is added in a later pass.

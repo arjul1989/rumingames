@@ -2,12 +2,14 @@ import { Metadata } from "next"
 
 import { listProducts } from "@lib/data/products"
 import { listCategories } from "@lib/data/categories"
+import { localizedAlternates } from "@lib/seo"
 import StoreTemplate from "@modules/gorumin/templates/store"
 
 export const metadata: Metadata = {
-  title: "Tienda — Gorumin",
+  title: "Tienda",
   description:
     "Gift cards, recargas y suscripciones de videojuegos con entrega digital inmediata. Steam, PlayStation, Nintendo, Xbox, Riot y Free Fire.",
+  alternates: localizedAlternates("store"),
 }
 
 type Params = {

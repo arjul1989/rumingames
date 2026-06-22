@@ -2,12 +2,14 @@ import { Metadata } from "next"
 import Image from "next/image"
 
 import { listStreamers } from "@lib/data/cms"
+import { localizedAlternates } from "@lib/seo"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 export const metadata: Metadata = {
-  title: "Streamers — Gorumin",
+  title: "Streamers",
   description:
     "Conoce a los streamers e influencers de la comunidad gamer de Gorumin Colombia.",
+  alternates: localizedAlternates("streamers"),
 }
 
 // Streamer directory (US-7.4 / RUM-40).

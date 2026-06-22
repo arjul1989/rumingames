@@ -2,12 +2,25 @@ import { Metadata } from "next"
 
 import { listProducts } from "@lib/data/products"
 import { listArticles, listStreamers } from "@lib/data/cms"
+import { absoluteUrl, localizedAlternates, SITE_NAME } from "@lib/seo"
 import HomeTemplate from "@modules/gorumin/templates/home"
+import JsonLd from "@modules/common/components/json-ld"
 
-export const metadata: Metadata = {
-  title: "Gorumin — Gift cards y recargas de videojuegos en Colombia",
-  description:
-    "Compra gift cards y recargas de Steam, PlayStation, Riot, Xbox y más con entrega digital inmediata. Noticias y streamers de la comunidad gamer colombiana.",
+const TITLE = "Gorumin — Gift cards y recargas de videojuegos en Colombia"
+const DESCRIPTION =
+  "Compra gift cards y recargas de Steam, PlayStation, Riot, Xbox y más con entrega digital inmediata. Noticias y streamers de la comunidad gamer colombiana."
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: { absolute: TITLE },
+    description: DESCRIPTION,
+    alternates: localizedAlternates(),
+    openGraph: {
+      title: TITLE,
+      description: DESCRIPTION,
+      url: absoluteUrl("co"),
+    },
+  }
 }
 
 export default async function Home(props: {
@@ -31,11 +44,40 @@ export default async function Home(props: {
     ? featuredStreamers.streamers
     : (await listStreamers({ limit: 12 })).streamers
 
+  const organization = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: SITE_NAME,
+    url: absoluteUrl(countryCode),
+    logo: absoluteUrl("logo.png"),
+    sameAs: [
+      "https://www.twitch.tv/",
+      "https://www.youtube.com/",
+      "https://www.instagram.com/",
+    ],
+  }
+
+  const website = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    url: absoluteUrl(countryCode),
+    inLanguage: "es-CO",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: `${absoluteUrl(`${countryCode}/store`)}?q={search_term_string}`,
+      "query-input": "required name=search_term_string",
+    },
+  }
+
   return (
-    <HomeTemplate
-      products={productsResult.response.products}
-      articles={articlesResult.articles}
-      streamers={streamers}
-    />
+    <>
+      <JsonLd data={[organization, website]} id="ld-home" />
+      <HomeTemplate
+        products={productsResult.response.products}
+        articles={articlesResult.articles}
+        streamers={streamers}
+      />
+    </>
   )
 }

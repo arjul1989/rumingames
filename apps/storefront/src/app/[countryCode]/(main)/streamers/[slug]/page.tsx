@@ -3,8 +3,10 @@ import Image from "next/image"
 import { notFound } from "next/navigation"
 
 import { getStreamer } from "@lib/data/cms"
+import { absoluteUrl, localizedAlternates } from "@lib/seo"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import ArticleCard from "@modules/gorumin/components/article-card"
+import JsonLd from "@modules/common/components/json-ld"
 
 type Props = {
   params: Promise<{ countryCode: string; slug: string }>
@@ -14,28 +16,63 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const { slug } = await props.params
   const streamer = await getStreamer(slug)
 
-  if (!streamer) return { title: "Streamer no encontrado — Gorumin" }
+  if (!streamer) return { title: "Streamer no encontrado" }
 
   const description = streamer.bio ?? `Perfil de ${streamer.name} en Gorumin`
   return {
-    title: `${streamer.name} — Gorumin`,
+    title: streamer.name,
     description,
+    alternates: localizedAlternates(`streamers/${slug}`),
     openGraph: {
       title: streamer.name,
       description,
+      type: "profile",
+      url: absoluteUrl(`co/streamers/${slug}`),
       images: streamer.avatar ? [streamer.avatar] : [],
     },
   }
 }
 
 export default async function StreamerPage(props: Props) {
-  const { slug } = await props.params
+  const { countryCode, slug } = await props.params
   const streamer = await getStreamer(slug)
 
   if (!streamer) notFound()
 
+  const streamerUrl = absoluteUrl(`${countryCode}/streamers/${slug}`)
+  const personLd = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: streamer.name,
+    description: streamer.bio ?? undefined,
+    image: streamer.avatar ?? undefined,
+    url: streamerUrl,
+    sameAs: [streamer.twitch_url, streamer.youtube_url].filter(
+      Boolean
+    ) as string[],
+  }
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Streamers",
+        item: absoluteUrl(`${countryCode}/streamers`),
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: streamer.name,
+        item: streamerUrl,
+      },
+    ],
+  }
+
   return (
     <div className="content-container py-12">
+      <JsonLd data={[personLd, breadcrumbLd]} id="ld-streamer" />
       <nav className="mb-8 flex flex-wrap items-center gap-2 font-mono text-label-caps tracking-widest text-on-surface-variant/60">
         <LocalizedClientLink href="/streamers" className="hover:text-secondary">
           STREAMERS

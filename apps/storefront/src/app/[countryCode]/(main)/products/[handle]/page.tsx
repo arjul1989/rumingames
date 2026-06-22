@@ -2,7 +2,10 @@ import { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { listProducts } from "@lib/data/products"
 import { getRegion, listRegions } from "@lib/data/regions"
+import { absoluteUrl, localizedAlternates, SITE_NAME } from "@lib/seo"
+import { getProductPrice } from "@lib/util/get-product-price"
 import ProductTemplate from "@modules/gorumin/templates/product"
+import JsonLd from "@modules/common/components/json-ld"
 
 type Props = {
   params: Promise<{ countryCode: string; handle: string }>
@@ -70,11 +73,14 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   }
 
   return {
-    title: `${product.title} — Gorumin`,
+    title: product.title,
     description: product.description ?? `${product.title} en Gorumin`,
+    alternates: localizedAlternates(`products/${handle}`),
     openGraph: {
       title: `${product.title} — Gorumin`,
       description: product.description ?? `${product.title} en Gorumin`,
+      type: "website",
+      url: absoluteUrl(`co/products/${handle}`),
       images: product.thumbnail ? [product.thumbnail] : [],
     },
   }
@@ -97,10 +103,37 @@ export default async function ProductPage(props: Props) {
     notFound()
   }
 
+  const { cheapestPrice } = getProductPrice({ product: pricedProduct })
+  const productUrl = absoluteUrl(
+    `${params.countryCode}/products/${params.handle}`
+  )
+  const productLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: pricedProduct.title,
+    description: pricedProduct.description ?? undefined,
+    image: pricedProduct.thumbnail ? [pricedProduct.thumbnail] : undefined,
+    brand: { "@type": "Brand", name: SITE_NAME },
+    ...(cheapestPrice
+      ? {
+          offers: {
+            "@type": "Offer",
+            price: cheapestPrice.calculated_price_number,
+            priceCurrency: cheapestPrice.currency_code.toUpperCase(),
+            availability: "https://schema.org/InStock",
+            url: productUrl,
+          },
+        }
+      : {}),
+  }
+
   return (
-    <ProductTemplate
-      product={pricedProduct}
-      countryCode={params.countryCode}
-    />
+    <>
+      <JsonLd data={productLd} id="ld-product" />
+      <ProductTemplate
+        product={pricedProduct}
+        countryCode={params.countryCode}
+      />
+    </>
   )
 }
