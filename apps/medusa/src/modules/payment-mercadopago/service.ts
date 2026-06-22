@@ -81,11 +81,18 @@ class MercadoPagoProviderService extends AbstractPaymentProvider<MercadoPagoOpti
   async initiatePayment(input: InitiatePaymentInput): Promise<InitiatePaymentOutput> {
     // The Brick collects the card token on the client; we only create the
     // session here and hand the public key + amount to the frontend.
-    const id = `mp_${crypto.randomUUID()}`
+    //
+    // The storefront re-initiates this session once the Brick produces a
+    // token (`{ token, payment_method_id, issuer_id, installments, payer }`),
+    // so we preserve any incoming `input.data` here. Otherwise the token
+    // would be wiped before `authorizePayment` runs at cart completion.
+    const incoming = (input.data ?? {}) as Record<string, unknown>
+    const id = (incoming.session_id as string) ?? `mp_${crypto.randomUUID()}`
     return {
       id,
       status: PaymentSessionStatus.PENDING,
       data: {
+        ...incoming,
         session_id: id,
         amount: this.toNumber(input.amount),
         currency_code: input.currency_code,

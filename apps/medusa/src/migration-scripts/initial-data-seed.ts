@@ -102,8 +102,15 @@ export default async function initial_data_seed({
           name: "Colombia",
           currency_code: "cop",
           countries,
-          // Mercado Pago provider is added in Epic 3 (RUM-22).
-          payment_providers: ["pp_system_default"],
+          // Mercado Pago is the live provider for Colombia (Epic 3 / RUM-22);
+          // it only registers when MP_ACCESS_TOKEN is configured. The system
+          // provider is kept as a manual fallback for local testing.
+          payment_providers: [
+            "pp_system_default",
+            ...(process.env.MP_ACCESS_TOKEN
+              ? ["pp_mercadopago_mercadopago"]
+              : []),
+          ],
         },
       ],
     },

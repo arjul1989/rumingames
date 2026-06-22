@@ -282,7 +282,7 @@ export async function applyPromotions(codes: string[]) {
     .catch(medusaError)
 }
 
-export async function applyGiftCard(code: string) {
+export async function applyGiftCard(_code: string) {
   //   const cartId = getCartId()
   //   if (!cartId) return "No cartId cookie found"
   //   try {
@@ -294,7 +294,7 @@ export async function applyGiftCard(code: string) {
   //   }
 }
 
-export async function removeDiscount(code: string) {
+export async function removeDiscount(_code: string) {
   // const cartId = getCartId()
   // if (!cartId) return "No cartId cookie found"
   // try {
@@ -306,8 +306,8 @@ export async function removeDiscount(code: string) {
 }
 
 export async function removeGiftCard(
-  codeToRemove: string,
-  giftCards: any[]
+  _codeToRemove: string,
+  _giftCards: unknown[]
   // giftCards: GiftCard[]
 ) {
   //   const cartId = getCartId()
@@ -332,8 +332,8 @@ export async function submitPromotionForm(
   const code = formData.get("code") as string
   try {
     await applyPromotions([code])
-  } catch (e: any) {
-    return e.message
+  } catch (e) {
+    return e instanceof Error ? e.message : "No se pudo aplicar el código."
   }
 }
 
@@ -348,7 +348,7 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
       throw new Error("No existing cart found when setting addresses")
     }
 
-    const data = {
+    const data: Record<string, unknown> = {
       shipping_address: {
         first_name: formData.get("shipping_address.first_name"),
         last_name: formData.get("shipping_address.last_name"),
@@ -362,7 +362,7 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
         phone: formData.get("shipping_address.phone"),
       },
       email: formData.get("email"),
-    } as any
+    }
 
     const sameAsBilling = formData.get("same_as_billing")
     if (sameAsBilling === "on") data.billing_address = data.shipping_address
@@ -380,9 +380,9 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
         province: formData.get("billing_address.province"),
         phone: formData.get("billing_address.phone"),
       }
-    await updateCart(data)
-  } catch (e: any) {
-    return e.message
+    await updateCart(data as HttpTypes.StoreUpdateCart)
+  } catch (e) {
+    return e instanceof Error ? e.message : "No se pudieron guardar los datos."
   }
 
   redirect(
@@ -427,6 +427,82 @@ export async function placeOrder(cartId?: string) {
   }
 
   return cartRes.cart
+}
+
+const MP_PROVIDER_ID =
+  process.env.NEXT_PUBLIC_PAYMENT_PROVIDER_ID || "pp_mercadopago_mercadopago"
+
+const MP_APPROVED_STATUSES = [
+  "captured",
+  "authorized",
+  "partially_captured",
+  "partially_authorized",
+]
+
+/**
+ * Completes a cart paid with Mercado Pago (US-3.2 / RUM-24).
+ *
+ * The Checkout Brick produces a one-time card `token` on the client; we inject
+ * it into the active payment session (which the provider preserves) and then
+ * complete the cart so the backend can authorize the charge against Mercado
+ * Pago. Redirects to the success / pending / failure result screens depending
+ * on the resulting payment status (US-7.6 / RUM-42).
+ */
+export async function payWithMercadoPago(
+  countryCode: string,
+  paymentData: Record<string, unknown>
+) {
+  const cart = await retrieveCart(
+    undefined,
+    "*payment_collection, *payment_collection.payment_sessions, *region, *shipping_address"
+  )
+
+  if (!cart) {
+    return { error: "No encontramos tu carrito." }
+  }
+
+  // Inject the Brick token (+ payment method / payer data) into the session.
+  await initiatePaymentSession(cart, {
+    provider_id: MP_PROVIDER_ID,
+    data: paymentData,
+  } as HttpTypes.StoreInitializePaymentSession)
+
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  let order: HttpTypes.StoreOrder | undefined
+  let failureReason = ""
+
+  try {
+    const res = await sdk.store.cart.complete(cart.id, {}, headers)
+    if (res?.type === "order") {
+      order = res.order
+    }
+  } catch (e) {
+    failureReason = e instanceof Error ? e.message : "El pago fue rechazado."
+  }
+
+  if (order) {
+    const cc =
+      order.shipping_address?.country_code?.toLowerCase() || countryCode
+
+    revalidateTag(await getCacheTag("carts"))
+    revalidateTag(await getCacheTag("orders"))
+    removeCartId()
+
+    const approved = MP_APPROVED_STATUSES.includes(
+      order.payment_status as string
+    )
+    const target = approved ? "success" : "pending"
+    redirect(`/${cc}/checkout/${target}?order=${order.id}`)
+  }
+
+  redirect(
+    `/${countryCode}/checkout/failure?reason=${encodeURIComponent(
+      failureReason || "No se pudo procesar el pago."
+    )}`
+  )
 }
 
 /**

@@ -1,12 +1,13 @@
 "use client"
 
-import { isManual, isStripeLike } from "@lib/constants"
+import { isManual, isMercadoPago, isStripeLike } from "@lib/constants"
 import { placeOrder } from "@lib/data/cart"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
 import React, { useState } from "react"
 import ErrorMessage from "../error-message"
+import MercadoPagoPayment from "../mercadopago-payment"
 
 type PaymentButtonProps = {
   cart: HttpTypes.StoreCart
@@ -24,9 +25,24 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
     !cart.email ||
     (cart.shipping_methods?.length ?? 0) < 1
 
-  const paymentSession = cart.payment_collection?.payment_sessions?.[0]
+  const paymentSession = cart.payment_collection?.payment_sessions?.find(
+    (s) => s.status === "pending"
+  )
+
+  const countryCode =
+    cart.shipping_address?.country_code?.toLowerCase() ||
+    cart.region?.countries?.[0]?.iso_2?.toLowerCase() ||
+    "co"
 
   switch (true) {
+    case isMercadoPago(paymentSession?.provider_id):
+      return (
+        <MercadoPagoPayment
+          cart={cart}
+          countryCode={countryCode}
+          data-testid={dataTestId}
+        />
+      )
     case isStripeLike(paymentSession?.provider_id):
       return (
         <StripePaymentButton
@@ -40,7 +56,7 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
         <ManualTestPaymentButton notReady={notReady} data-testid={dataTestId} />
       )
     default:
-      return <Button disabled>Select a payment method</Button>
+      return <Button disabled>Selecciona un método de pago</Button>
   }
 }
 
@@ -141,7 +157,7 @@ const StripePaymentButton = ({
         isLoading={submitting}
         data-testid={dataTestId}
       >
-        Place order
+        Realizar pedido
       </Button>
       <ErrorMessage
         error={errorMessage}
@@ -180,7 +196,7 @@ const ManualTestPaymentButton = ({ notReady }: { notReady: boolean }) => {
         size="large"
         data-testid="submit-order-button"
       >
-        Place order
+        Realizar pedido
       </Button>
       <ErrorMessage
         error={errorMessage}

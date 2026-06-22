@@ -33,6 +33,10 @@ export const paymentInfoMap: Record<
     title: "Manual Payment",
     icon: <CreditCard />,
   },
+  pp_mercadopago_mercadopago: {
+    title: "Tarjeta de crédito o débito",
+    icon: <CreditCard />,
+  },
   // Add more payment providers here
 }
 
@@ -49,6 +53,12 @@ export const isPaypal = (providerId?: string) => {
 export const isManual = (providerId?: string) => {
   return providerId?.startsWith("pp_system_default")
 }
+// Mercado Pago (Colombia) — card payments via the Checkout Brick (US-3.2 / RUM-24).
+export const isMercadoPago = (providerId?: string) => {
+  return providerId?.startsWith("pp_mercadopago")
+}
+export const MERCADOPAGO_PROVIDER_ID =
+  process.env.NEXT_PUBLIC_PAYMENT_PROVIDER_ID || "pp_mercadopago_mercadopago"
 
 // Add currencies that don't need to be divided by 100
 export const noDivisionCurrencies = [
