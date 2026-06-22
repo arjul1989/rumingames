@@ -1,0 +1,957 @@
+{
+  "info": {
+    "name": "Gorumin API",
+    "_postman_id": "b7d2e1a0-1111-4c00-9000-gorumin000001",
+    "description": "Colección completa de la plataforma Gorumin (videojuegos / Colombia).\n\nIncluye:\n- BFF del storefront (Next.js, /api/*): proxy público con CORS + rate limiting y sesión de cliente en cookie httpOnly.\n- Medusa Store API (custom): noticias, streamers, feed, estado de pago y códigos digitales.\n- Medusa Admin API (custom): Fazer (sync/balance), órdenes (retry-fulfillment, refund), CMS (artículos/categorías/streamers).\n- Webhooks y health.\n\nVariables y tokens se capturan automáticamente con los requests de Auth (ver carpetas *Auth*). Usa los environments `Gorumin Local` o `Gorumin Production`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "BFF — Storefront (/api)",
+      "description": "Backend-for-frontend del storefront. Base: {{bff_url}}. La sesión de cliente usa cookie httpOnly (_gorumin_jwt) gestionada automáticamente por el cookie jar de Postman para el dominio del BFF.",
+      "item": [
+        {
+          "name": "Catalog",
+          "item": [
+            {
+              "name": "List products",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{bff_url}}/products?region={{region}}&limit=20&offset=0",
+                  "host": ["{{bff_url}}"],
+                  "path": ["products"],
+                  "query": [
+                    { "key": "region", "value": "{{region}}" },
+                    { "key": "limit", "value": "20" },
+                    { "key": "offset", "value": "0" },
+                    { "key": "q", "value": "", "disabled": true },
+                    { "key": "category_id", "value": "", "disabled": true }
+                  ]
+                },
+                "description": "Lista de productos con precios calculados en COP para la región indicada (ISO2, default co)."
+              }
+            },
+            {
+              "name": "Get product by handle",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{bff_url}}/products/{{product_handle}}?region={{region}}",
+                  "host": ["{{bff_url}}"],
+                  "path": ["products", "{{product_handle}}"],
+                  "query": [{ "key": "region", "value": "{{region}}" }]
+                }
+              }
+            },
+            {
+              "name": "List categories",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{bff_url}}/categories?limit=100",
+                  "host": ["{{bff_url}}"],
+                  "path": ["categories"],
+                  "query": [{ "key": "limit", "value": "100" }]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Content",
+          "item": [
+            {
+              "name": "List articles",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{bff_url}}/articles?limit=20&offset=0",
+                  "host": ["{{bff_url}}"],
+                  "path": ["articles"],
+                  "query": [
+                    { "key": "limit", "value": "20" },
+                    { "key": "offset", "value": "0" },
+                    { "key": "category_id", "value": "", "disabled": true }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get article by slug",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{bff_url}}/articles/{{article_slug}}",
+                  "host": ["{{bff_url}}"],
+                  "path": ["articles", "{{article_slug}}"]
+                },
+                "description": "Artículo publicado con productos relacionados y tags resueltos."
+              }
+            },
+            {
+              "name": "List streamers",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{bff_url}}/streamers?featured=true&limit=50",
+                  "host": ["{{bff_url}}"],
+                  "path": ["streamers"],
+                  "query": [
+                    { "key": "featured", "value": "true" },
+                    { "key": "limit", "value": "50" }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Unified feed",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{bff_url}}/feed?limit=20&offset=0",
+                  "host": ["{{bff_url}}"],
+                  "path": ["feed"],
+                  "query": [
+                    { "key": "limit", "value": "20" },
+                    { "key": "offset", "value": "0" }
+                  ]
+                },
+                "description": "Feed unificado: noticias + productos nuevos + streamers destacados, ordenado por fecha."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cart",
+          "item": [
+            {
+              "name": "Create cart",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const c = pm.response.json().cart;",
+                      "if (c && c.id) { pm.environment.set('cart_id', c.id); console.log('cart_id =', c.id); }"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"region\": \"{{region}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{bff_url}}/cart",
+                  "host": ["{{bff_url}}"],
+                  "path": ["cart"]
+                },
+                "description": "Crea un carrito y guarda cart_id en el environment. También setea cookie _gorumin_cart_id."
+              }
+            },
+            {
+              "name": "Get current cart",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{bff_url}}/cart?id={{cart_id}}",
+                  "host": ["{{bff_url}}"],
+                  "path": ["cart"],
+                  "query": [{ "key": "id", "value": "{{cart_id}}" }]
+                }
+              }
+            },
+            {
+              "name": "Update cart (email)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{customer_email}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{bff_url}}/cart/{{cart_id}}",
+                  "host": ["{{bff_url}}"],
+                  "path": ["cart", "{{cart_id}}"]
+                }
+              }
+            },
+            {
+              "name": "Add line item",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const c = pm.response.json().cart;",
+                      "if (c && c.items && c.items.length) { pm.environment.set('line_id', c.items[0].id); }"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"variant_id\": \"{{variant_id}}\",\n  \"quantity\": 1\n}"
+                },
+                "url": {
+                  "raw": "{{bff_url}}/cart/{{cart_id}}/line-items",
+                  "host": ["{{bff_url}}"],
+                  "path": ["cart", "{{cart_id}}", "line-items"]
+                },
+                "description": "Setea {{variant_id}} con un variant real (ver 'Get product by handle')."
+              }
+            },
+            {
+              "name": "Update line item qty",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"quantity\": 3\n}"
+                },
+                "url": {
+                  "raw": "{{bff_url}}/cart/{{cart_id}}/line-items/{{line_id}}",
+                  "host": ["{{bff_url}}"],
+                  "path": ["cart", "{{cart_id}}", "line-items", "{{line_id}}"]
+                }
+              }
+            },
+            {
+              "name": "Delete line item",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{bff_url}}/cart/{{cart_id}}/line-items/{{line_id}}",
+                  "host": ["{{bff_url}}"],
+                  "path": ["cart", "{{cart_id}}", "line-items", "{{line_id}}"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Checkout",
+          "item": [
+            {
+              "name": "Initiate payment session",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"cart_id\": \"{{cart_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{bff_url}}/checkout/payment-session",
+                  "host": ["{{bff_url}}"],
+                  "path": ["checkout", "payment-session"]
+                },
+                "description": "Crea payment collection e inicia la sesión del proveedor (Mercado Pago por defecto)."
+              }
+            },
+            {
+              "name": "Complete checkout",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const d = pm.response.json();",
+                      "if (d && d.type === 'order' && d.order) { pm.environment.set('order_id', d.order.id); console.log('order_id =', d.order.id); }"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"cart_id\": \"{{cart_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{bff_url}}/checkout/complete",
+                  "host": ["{{bff_url}}"],
+                  "path": ["checkout", "complete"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth",
+          "item": [
+            {
+              "name": "Register",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{customer_email}}\",\n  \"password\": \"{{customer_password}}\",\n  \"first_name\": \"Gorumin\",\n  \"last_name\": \"Tester\"\n}"
+                },
+                "url": {
+                  "raw": "{{bff_url}}/auth/register",
+                  "host": ["{{bff_url}}"],
+                  "path": ["auth", "register"]
+                },
+                "description": "Crea el cliente y deja la sesión iniciada (cookie httpOnly)."
+              }
+            },
+            {
+              "name": "Login",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{customer_email}}\",\n  \"password\": \"{{customer_password}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{bff_url}}/auth/login",
+                  "host": ["{{bff_url}}"],
+                  "path": ["auth", "login"]
+                },
+                "description": "Setea la cookie httpOnly _gorumin_jwt (gestionada por el cookie jar de Postman)."
+              }
+            },
+            {
+              "name": "Me",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{bff_url}}/auth/me",
+                  "host": ["{{bff_url}}"],
+                  "path": ["auth", "me"]
+                }
+              }
+            },
+            {
+              "name": "Logout",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{bff_url}}/auth/logout",
+                  "host": ["{{bff_url}}"],
+                  "path": ["auth", "logout"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Orders",
+          "item": [
+            {
+              "name": "Payment status (polling)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{bff_url}}/orders/{{order_id}}/payment-status",
+                  "host": ["{{bff_url}}"],
+                  "path": ["orders", "{{order_id}}", "payment-status"]
+                },
+                "description": "Estado normalizado: pending | approved | rejected | refunded."
+              }
+            },
+            {
+              "name": "Reveal digital codes (auth + ownership)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{bff_url}}/orders/{{order_id}}/digital-codes",
+                  "host": ["{{bff_url}}"],
+                  "path": ["orders", "{{order_id}}", "digital-codes"]
+                },
+                "description": "Requiere sesión de cliente (login) y que la orden pertenezca al cliente."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Docs",
+          "item": [
+            {
+              "name": "OpenAPI spec (JSON)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{bff_url}}/openapi.json",
+                  "host": ["{{bff_url}}"],
+                  "path": ["openapi.json"]
+                }
+              }
+            },
+            {
+              "name": "Swagger UI (HTML)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{bff_url}}/docs",
+                  "host": ["{{bff_url}}"],
+                  "path": ["docs"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Medusa Store API (custom)",
+      "description": "Endpoints custom directos del backend Medusa. Base: {{medusa_url}}. Requieren el header x-publishable-api-key.",
+      "item": [
+        {
+          "name": "Customer login (emailpass)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const t = pm.response.json().token;",
+                  "if (t) { pm.environment.set('customer_jwt', t); console.log('customer_jwt capturado'); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customer_email}}\",\n  \"password\": \"{{customer_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{medusa_url}}/auth/customer/emailpass",
+              "host": ["{{medusa_url}}"],
+              "path": ["auth", "customer", "emailpass"]
+            }
+          }
+        },
+        {
+          "name": "List regions",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-publishable-api-key", "value": "{{publishable_key}}" }],
+            "url": {
+              "raw": "{{medusa_url}}/store/regions",
+              "host": ["{{medusa_url}}"],
+              "path": ["store", "regions"]
+            }
+          }
+        },
+        {
+          "name": "List products",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-publishable-api-key", "value": "{{publishable_key}}" }],
+            "url": {
+              "raw": "{{medusa_url}}/store/products?limit=20&fields=*variants.calculated_price",
+              "host": ["{{medusa_url}}"],
+              "path": ["store", "products"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "fields", "value": "*variants.calculated_price" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List articles",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-publishable-api-key", "value": "{{publishable_key}}" }],
+            "url": {
+              "raw": "{{medusa_url}}/store/articles?limit=20",
+              "host": ["{{medusa_url}}"],
+              "path": ["store", "articles"],
+              "query": [{ "key": "limit", "value": "20" }]
+            }
+          }
+        },
+        {
+          "name": "Get article by slug",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-publishable-api-key", "value": "{{publishable_key}}" }],
+            "url": {
+              "raw": "{{medusa_url}}/store/articles/{{article_slug}}",
+              "host": ["{{medusa_url}}"],
+              "path": ["store", "articles", "{{article_slug}}"]
+            }
+          }
+        },
+        {
+          "name": "List streamers",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-publishable-api-key", "value": "{{publishable_key}}" }],
+            "url": {
+              "raw": "{{medusa_url}}/store/streamers?featured=true",
+              "host": ["{{medusa_url}}"],
+              "path": ["store", "streamers"],
+              "query": [{ "key": "featured", "value": "true" }]
+            }
+          }
+        },
+        {
+          "name": "Unified feed",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-publishable-api-key", "value": "{{publishable_key}}" }],
+            "url": {
+              "raw": "{{medusa_url}}/store/feed?limit=20",
+              "host": ["{{medusa_url}}"],
+              "path": ["store", "feed"],
+              "query": [{ "key": "limit", "value": "20" }]
+            }
+          }
+        },
+        {
+          "name": "Order payment status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-publishable-api-key", "value": "{{publishable_key}}" }],
+            "url": {
+              "raw": "{{medusa_url}}/store/orders/{{order_id}}/payment-status",
+              "host": ["{{medusa_url}}"],
+              "path": ["store", "orders", "{{order_id}}", "payment-status"]
+            }
+          }
+        },
+        {
+          "name": "Order digital codes (auth)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-publishable-api-key", "value": "{{publishable_key}}" },
+              { "key": "Authorization", "value": "Bearer {{customer_jwt}}" }
+            ],
+            "url": {
+              "raw": "{{medusa_url}}/store/orders/{{order_id}}/digital-codes",
+              "host": ["{{medusa_url}}"],
+              "path": ["store", "orders", "{{order_id}}", "digital-codes"]
+            },
+            "description": "Requiere customer_jwt (ver 'Customer login') y ownership de la orden."
+          }
+        },
+        {
+          "name": "Verify email (link)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{medusa_url}}/verify-email?token={{email_verification_token}}&customer_id={{customer_id}}",
+              "host": ["{{medusa_url}}"],
+              "path": ["verify-email"],
+              "query": [
+                { "key": "token", "value": "{{email_verification_token}}" },
+                { "key": "customer_id", "value": "{{customer_id}}" }
+              ]
+            },
+            "description": "Endpoint público que procesa el enlace de verificación de email."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Medusa Admin API (custom)",
+      "description": "Endpoints admin custom. Base: {{medusa_url}}. Requieren Authorization: Bearer {{admin_jwt}} (ejecuta 'Admin login' primero).",
+      "auth": {
+        "type": "bearer",
+        "bearer": [{ "key": "token", "value": "{{admin_jwt}}", "type": "string" }]
+      },
+      "item": [
+        {
+          "name": "Admin login (emailpass)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const t = pm.response.json().token;",
+                  "if (t) { pm.environment.set('admin_jwt', t); console.log('admin_jwt capturado'); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{medusa_url}}/auth/user/emailpass",
+              "host": ["{{medusa_url}}"],
+              "path": ["auth", "user", "emailpass"]
+            }
+          }
+        },
+        {
+          "name": "Fazer",
+          "item": [
+            {
+              "name": "Get balance",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{medusa_url}}/admin/fazer/balance",
+                  "host": ["{{medusa_url}}"],
+                  "path": ["admin", "fazer", "balance"]
+                }
+              }
+            },
+            {
+              "name": "Trigger catalog sync",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"categories\": [\"gift-cards\", \"top-ups\"]\n}"
+                },
+                "url": {
+                  "raw": "{{medusa_url}}/admin/fazer/sync-catalog",
+                  "host": ["{{medusa_url}}"],
+                  "path": ["admin", "fazer", "sync-catalog"]
+                }
+              }
+            },
+            {
+              "name": "Last sync status",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{medusa_url}}/admin/fazer/sync-catalog",
+                  "host": ["{{medusa_url}}"],
+                  "path": ["admin", "fazer", "sync-catalog"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Orders",
+          "item": [
+            {
+              "name": "Retry fulfillment",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{medusa_url}}/admin/orders/{{order_id}}/retry-fulfillment",
+                  "host": ["{{medusa_url}}"],
+                  "path": ["admin", "orders", "{{order_id}}", "retry-fulfillment"]
+                },
+                "description": "Reintento idempotente de fulfillment digital contra Fazer."
+              }
+            },
+            {
+              "name": "Refund (Mercado Pago)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": null\n}"
+                },
+                "url": {
+                  "raw": "{{medusa_url}}/admin/orders/{{order_id}}/refund-mp",
+                  "host": ["{{medusa_url}}"],
+                  "path": ["admin", "orders", "{{order_id}}", "refund-mp"]
+                },
+                "description": "amount null => reembolso total. Especifica un monto (COP) para reembolso parcial."
+              }
+            }
+          ]
+        },
+        {
+          "name": "CMS — Articles",
+          "item": [
+            {
+              "name": "List articles",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{medusa_url}}/admin/cms/articles?limit=20&offset=0",
+                  "host": ["{{medusa_url}}"],
+                  "path": ["admin", "cms", "articles"],
+                  "query": [
+                    { "key": "limit", "value": "20" },
+                    { "key": "offset", "value": "0" },
+                    { "key": "status", "value": "", "disabled": true },
+                    { "key": "q", "value": "", "disabled": true }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create article",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const a = pm.response.json().article;",
+                      "if (a && a.id) { pm.environment.set('article_id', a.id); pm.environment.set('article_slug', a.slug); }"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Nueva noticia de prueba\",\n  \"body\": \"# Hola\\n\\nContenido en **Markdown**.\",\n  \"excerpt\": \"Resumen corto\",\n  \"status\": \"published\",\n  \"category_id\": null,\n  \"tag_ids\": [],\n  \"related_product_ids\": []\n}"
+                },
+                "url": {
+                  "raw": "{{medusa_url}}/admin/cms/articles",
+                  "host": ["{{medusa_url}}"],
+                  "path": ["admin", "cms", "articles"]
+                }
+              }
+            },
+            {
+              "name": "Get article by id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{medusa_url}}/admin/cms/articles/{{article_id}}",
+                  "host": ["{{medusa_url}}"],
+                  "path": ["admin", "cms", "articles", "{{article_id}}"]
+                }
+              }
+            },
+            {
+              "name": "Update article",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Noticia actualizada\",\n  \"status\": \"published\"\n}"
+                },
+                "url": {
+                  "raw": "{{medusa_url}}/admin/cms/articles/{{article_id}}",
+                  "host": ["{{medusa_url}}"],
+                  "path": ["admin", "cms", "articles", "{{article_id}}"]
+                }
+              }
+            },
+            {
+              "name": "Delete article",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{medusa_url}}/admin/cms/articles/{{article_id}}",
+                  "host": ["{{medusa_url}}"],
+                  "path": ["admin", "cms", "articles", "{{article_id}}"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "CMS — Categories",
+          "item": [
+            {
+              "name": "List categories",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{medusa_url}}/admin/cms/categories",
+                  "host": ["{{medusa_url}}"],
+                  "path": ["admin", "cms", "categories"]
+                }
+              }
+            },
+            {
+              "name": "Create category",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Esports\"\n}"
+                },
+                "url": {
+                  "raw": "{{medusa_url}}/admin/cms/categories",
+                  "host": ["{{medusa_url}}"],
+                  "path": ["admin", "cms", "categories"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "CMS — Streamers",
+          "item": [
+            {
+              "name": "List streamers",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{medusa_url}}/admin/cms/streamers?limit=50",
+                  "host": ["{{medusa_url}}"],
+                  "path": ["admin", "cms", "streamers"],
+                  "query": [{ "key": "limit", "value": "50" }]
+                }
+              }
+            },
+            {
+              "name": "Create streamer",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const s = pm.response.json().streamer;",
+                      "if (s && s.id) { pm.environment.set('streamer_id', s.id); }"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"StreamerPro\",\n  \"bio\": \"Caster de Free Fire\",\n  \"twitch_url\": \"https://twitch.tv/streamerpro\",\n  \"is_featured\": true\n}"
+                },
+                "url": {
+                  "raw": "{{medusa_url}}/admin/cms/streamers",
+                  "host": ["{{medusa_url}}"],
+                  "path": ["admin", "cms", "streamers"]
+                }
+              }
+            },
+            {
+              "name": "Get streamer by id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{medusa_url}}/admin/cms/streamers/{{streamer_id}}",
+                  "host": ["{{medusa_url}}"],
+                  "path": ["admin", "cms", "streamers", "{{streamer_id}}"]
+                }
+              }
+            },
+            {
+              "name": "Update streamer",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"is_featured\": false\n}"
+                },
+                "url": {
+                  "raw": "{{medusa_url}}/admin/cms/streamers/{{streamer_id}}",
+                  "host": ["{{medusa_url}}"],
+                  "path": ["admin", "cms", "streamers", "{{streamer_id}}"]
+                }
+              }
+            },
+            {
+              "name": "Delete streamer",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{medusa_url}}/admin/cms/streamers/{{streamer_id}}",
+                  "host": ["{{medusa_url}}"],
+                  "path": ["admin", "cms", "streamers", "{{streamer_id}}"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Webhooks & Health",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{medusa_url}}/health",
+              "host": ["{{medusa_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Mercado Pago webhook (reference)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-signature", "value": "ts=0,v1=invalid" },
+              { "key": "x-request-id", "value": "test-request-id" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"payment\",\n  \"data\": { \"id\": \"123456\" }\n}"
+            },
+            "url": {
+              "raw": "{{medusa_url}}/hooks/mercadopago?type=payment&data.id=123456",
+              "host": ["{{medusa_url}}"],
+              "path": ["hooks", "mercadopago"],
+              "query": [
+                { "key": "type", "value": "payment" },
+                { "key": "data.id", "value": "123456" }
+              ]
+            },
+            "description": "Recibido por Mercado Pago. Verifica firma x-signature; una firma inválida devuelve 401. Solo de referencia."
+          }
+        }
+      ]
+    }
+  ]
+}
