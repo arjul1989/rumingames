@@ -16,6 +16,8 @@ import {
 import { useEffect, useState } from "react"
 
 type Category = { id: string; name: string }
+type Tag = { id: string; name: string; slug: string }
+type StreamerOption = { id: string; name: string }
 type Article = {
   id: string
   title: string
@@ -23,11 +25,17 @@ type Article = {
   status: "draft" | "published" | "archived"
   category?: Category | null
   category_id?: string | null
+  streamer?: { id: string } | null
+  streamer_id?: string | null
   excerpt?: string | null
   body?: string
   cover_image?: string | null
   author?: string | null
   related_product_ids?: string[]
+  tag_ids?: string[]
+  seo_title?: string | null
+  seo_description?: string | null
+  og_image?: string | null
 }
 type ProductHit = { id: string; title: string; thumbnail?: string | null }
 
@@ -42,25 +50,61 @@ const empty: Partial<Article> = {
   author: "",
   status: "draft",
   category_id: null,
+  streamer_id: null,
   related_product_ids: [],
+  tag_ids: [],
+  seo_title: "",
+  seo_description: "",
+  og_image: "",
 }
 
 const NoticiasPage = () => {
   const [articles, setArticles] = useState<Article[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [tags, setTags] = useState<Tag[]>([])
+  const [streamers, setStreamers] = useState<StreamerOption[]>([])
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<Partial<Article>>(empty)
   const [saving, setSaving] = useState(false)
   const [productQuery, setProductQuery] = useState("")
   const [productHits, setProductHits] = useState<ProductHit[]>([])
+  const [newTag, setNewTag] = useState("")
 
   const load = async () => {
-    const [a, c] = await Promise.all([
+    const [a, c, t, s] = await Promise.all([
       fetch("/admin/cms/articles?limit=100", { credentials: "include" }).then((r) => r.json()),
       fetch("/admin/cms/categories", { credentials: "include" }).then((r) => r.json()),
+      fetch("/admin/cms/tags", { credentials: "include" }).then((r) => r.json()),
+      fetch("/admin/cms/streamers?limit=200", { credentials: "include" }).then((r) => r.json()),
     ])
     setArticles(a.articles ?? [])
     setCategories(c.categories ?? [])
+    setTags(t.tags ?? [])
+    setStreamers(s.streamers ?? [])
+  }
+
+  const toggleTag = (id: string) => {
+    setForm((f) => {
+      const cur = new Set(f.tag_ids ?? [])
+      cur.has(id) ? cur.delete(id) : cur.add(id)
+      return { ...f, tag_ids: [...cur] }
+    })
+  }
+
+  const createTag = async () => {
+    if (!newTag.trim()) return
+    const r = await fetch("/admin/cms/tags", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newTag.trim() }),
+    })
+    const json = await r.json()
+    if (json.tag) {
+      setTags((prev) => (prev.find((t) => t.id === json.tag.id) ? prev : [...prev, json.tag]))
+      toggleTag(json.tag.id)
+      setNewTag("")
+    }
   }
 
   useEffect(() => {
@@ -72,7 +116,12 @@ const NoticiasPage = () => {
     setOpen(true)
   }
   const openEdit = (a: Article) => {
-    setForm({ ...a, category_id: a.category?.id ?? a.category_id ?? null })
+    setForm({
+      ...a,
+      category_id: a.category?.id ?? a.category_id ?? null,
+      streamer_id: a.streamer?.id ?? a.streamer_id ?? null,
+      tag_ids: a.tag_ids ?? [],
+    })
     setOpen(true)
   }
 
@@ -128,7 +177,12 @@ const NoticiasPage = () => {
         author: form.author,
         status: form.status,
         category_id: form.category_id,
+        streamer_id: form.streamer_id || null,
         related_product_ids: form.related_product_ids ?? [],
+        tag_ids: form.tag_ids ?? [],
+        seo_title: form.seo_title || null,
+        seo_description: form.seo_description || null,
+        og_image: form.og_image || null,
       }
       const r = await fetch(url, {
         method: "POST",
@@ -325,6 +379,118 @@ const NoticiasPage = () => {
                     {id} ✕
                   </Badge>
                 ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-y-1">
+              <Label>Streamer relacionado (opcional)</Label>
+              <Select
+                value={form.streamer_id ?? ""}
+                onValueChange={(v) => setForm((f) => ({ ...f, streamer_id: v }))}
+              >
+                <Select.Trigger>
+                  <Select.Value placeholder="Ninguno" />
+                </Select.Trigger>
+                <Select.Content>
+                  {streamers.map((s) => (
+                    <Select.Item key={s.id} value={s.id}>
+                      {s.name}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select>
+              {form.streamer_id && (
+                <button
+                  type="button"
+                  className="text-ui-fg-subtle hover:text-ui-fg-base mt-1 w-fit text-xs"
+                  onClick={() => setForm((f) => ({ ...f, streamer_id: null }))}
+                >
+                  Quitar streamer
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-y-1">
+              <Label>Tags</Label>
+              <div className="flex flex-wrap gap-2">
+                {tags.map((t) => {
+                  const active = (form.tag_ids ?? []).includes(t.id)
+                  return (
+                    <Badge
+                      key={t.id}
+                      size="small"
+                      color={active ? "purple" : "grey"}
+                      className="cursor-pointer"
+                      onClick={() => toggleTag(t.id)}
+                    >
+                      {active ? "✓ " : ""}
+                      {t.name}
+                    </Badge>
+                  )
+                })}
+              </div>
+              <div className="mt-2 flex gap-2">
+                <Input
+                  value={newTag}
+                  placeholder="Nuevo tag…"
+                  onChange={(e) => setNewTag(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      createTag()
+                    }
+                  }}
+                />
+                <Button size="small" variant="secondary" onClick={createTag} type="button">
+                  Añadir
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-y-4 border-t pt-4">
+              <Heading level="h3">SEO</Heading>
+              <div className="flex flex-col gap-y-1">
+                <Label>Título SEO</Label>
+                <Input
+                  value={form.seo_title ?? ""}
+                  placeholder="Por defecto: el título del artículo"
+                  onChange={(e) => setForm((f) => ({ ...f, seo_title: e.target.value }))}
+                />
+              </div>
+              <div className="flex flex-col gap-y-1">
+                <Label>Meta descripción</Label>
+                <Textarea
+                  rows={2}
+                  value={form.seo_description ?? ""}
+                  placeholder="Por defecto: el extracto"
+                  onChange={(e) => setForm((f) => ({ ...f, seo_description: e.target.value }))}
+                />
+              </div>
+              <div className="flex flex-col gap-y-1">
+                <Label>Imagen Open Graph (URL)</Label>
+                <Input
+                  value={form.og_image ?? ""}
+                  placeholder="Por defecto: la portada"
+                  onChange={(e) => setForm((f) => ({ ...f, og_image: e.target.value }))}
+                />
+                {(form.og_image || form.cover_image) && (
+                  <img
+                    src={(form.og_image || form.cover_image) as string}
+                    alt="og preview"
+                    className="mt-2 h-24 w-auto rounded"
+                  />
+                )}
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-ui-fg-base text-sm font-medium">
+                  {form.seo_title || form.title || "Título del artículo"}
+                </p>
+                <p className="text-ui-fg-interactive text-xs">
+                  gorumin.com/noticias/{form.slug || "slug"}
+                </p>
+                <p className="text-ui-fg-subtle mt-1 text-xs">
+                  {form.seo_description || form.excerpt || "Meta descripción…"}
+                </p>
               </div>
             </div>
           </FocusModal.Body>

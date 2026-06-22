@@ -40,6 +40,9 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   if (body.streamer_id !== undefined) update.streamer_id = body.streamer_id
   if (Array.isArray(body.related_product_ids)) update.related_product_ids = body.related_product_ids
   if (Array.isArray(body.tag_ids)) update.tag_ids = body.tag_ids
+  if (body.seo_title !== undefined) update.seo_title = body.seo_title
+  if (body.seo_description !== undefined) update.seo_description = body.seo_description
+  if (body.og_image !== undefined) update.og_image = body.og_image
 
   if (body.status !== undefined && body.status !== current.status) {
     update.status = body.status

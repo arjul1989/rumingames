@@ -8,11 +8,13 @@ const RELATIONS = ["category", "streamer"]
 // List articles for the admin (US-4.1 / RUM-29) with pagination and filters.
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const cms = req.scope.resolve<CmsModuleService>(CMS_MODULE)
-  const { status, category_id, q, limit = "20", offset = "0" } = req.query as Record<string, string>
+  const { status, category_id, streamer_id, q, limit = "20", offset = "0" } =
+    req.query as Record<string, string>
 
   const filters: Record<string, unknown> = {}
   if (status) filters.status = status
   if (category_id) filters.category_id = category_id
+  if (streamer_id) filters.streamer_id = streamer_id
   if (q) filters.title = { $ilike: `%${q}%` }
 
   const [articles, count] = await cms.listAndCountArticles(filters, {
@@ -48,6 +50,9 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     tag_ids: Array.isArray(body.tag_ids) ? body.tag_ids : [],
     category_id: body.category_id ?? null,
     streamer_id: body.streamer_id ?? null,
+    seo_title: body.seo_title ?? null,
+    seo_description: body.seo_description ?? null,
+    og_image: body.og_image ?? null,
   })
 
   res.status(201).json({ article })

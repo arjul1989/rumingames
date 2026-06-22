@@ -11,6 +11,7 @@ import {
   Textarea,
   Label,
   Switch,
+  Text,
   toast,
 } from "@medusajs/ui"
 import { useEffect, useState } from "react"
@@ -40,6 +41,23 @@ const StreamersPage = () => {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<Partial<Streamer>>(empty)
   const [saving, setSaving] = useState(false)
+  const [streamerArticles, setStreamerArticles] = useState<{ id: string; title: string; status: string }[]>([])
+
+  const openEdit = async (s: Streamer) => {
+    setForm(s)
+    setStreamerArticles([])
+    setOpen(true)
+    const r = await fetch(`/admin/cms/articles?streamer_id=${s.id}&limit=100`, {
+      credentials: "include",
+    }).then((r) => r.json())
+    setStreamerArticles(r.articles ?? [])
+  }
+
+  const openCreate = () => {
+    setForm(empty)
+    setStreamerArticles([])
+    setOpen(true)
+  }
 
   const load = async () => {
     const r = await fetch("/admin/cms/streamers?limit=100", { credentials: "include" }).then((r) =>
@@ -84,13 +102,7 @@ const StreamersPage = () => {
     <Container className="divide-y p-0">
       <div className="flex items-center justify-between px-6 py-4">
         <Heading level="h1">Streamers</Heading>
-        <Button
-          size="small"
-          onClick={() => {
-            setForm(empty)
-            setOpen(true)
-          }}
-        >
+        <Button size="small" onClick={openCreate}>
           Nuevo streamer
         </Button>
       </div>
@@ -112,14 +124,7 @@ const StreamersPage = () => {
               </Table.Cell>
               <Table.Cell>
                 <div className="flex gap-x-2">
-                  <Button
-                    size="small"
-                    variant="secondary"
-                    onClick={() => {
-                      setForm(s)
-                      setOpen(true)
-                    }}
-                  >
+                  <Button size="small" variant="secondary" onClick={() => openEdit(s)}>
                     Editar
                   </Button>
                   <Button size="small" variant="danger" onClick={() => remove(s)}>
@@ -186,6 +191,34 @@ const StreamersPage = () => {
               />
               <Label>Destacado en la comunidad</Label>
             </div>
+
+            {form.id && (
+              <div className="flex flex-col gap-y-2 border-t pt-4">
+                <Label>Artículos del streamer</Label>
+                {streamerArticles.length === 0 ? (
+                  <Text size="small" className="text-ui-fg-muted">
+                    Sin artículos asociados.
+                  </Text>
+                ) : (
+                  <div className="flex flex-col gap-y-1">
+                    {streamerArticles.map((a) => (
+                      <div
+                        key={a.id}
+                        className="flex items-center justify-between rounded border px-3 py-2"
+                      >
+                        <span className="text-sm">{a.title}</span>
+                        <Badge
+                          size="small"
+                          color={a.status === "published" ? "green" : "grey"}
+                        >
+                          {a.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </FocusModal.Body>
         </FocusModal.Content>
       </FocusModal>

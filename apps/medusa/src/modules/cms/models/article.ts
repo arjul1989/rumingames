@@ -19,6 +19,11 @@ const Article = model
     related_product_ids: model.json().default([]),
     // Tags referenced by id (kept simple; the article_tag table is the catalog).
     tag_ids: model.json().default([]),
+    // SEO / Open Graph overrides (US-4.1 / §3.2). Fall back to title/excerpt/
+    // cover_image at the rendering layer when empty.
+    seo_title: model.text().nullable(),
+    seo_description: model.text().nullable(),
+    og_image: model.text().nullable(),
     category: model.belongsTo(() => ArticleCategory, { mappedBy: "articles" }).nullable(),
     streamer: model.belongsTo(() => Streamer, { mappedBy: "articles" }).nullable(),
   })
