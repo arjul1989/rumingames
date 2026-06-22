@@ -7,7 +7,7 @@ import type FazerModuleService from "../modules/fazer/service"
 import type { FazerCatalogItem } from "../modules/fazer/lib/types"
 import {
   computeCopPrice,
-  getDefaultMarginPct,
+  getMarginForCategory,
   getUsdCopRate,
 } from "./pricing"
 
@@ -53,6 +53,7 @@ export async function runCatalogSync(
         prices_updated: 0,
         errors: 1,
         message,
+        usd_cop_rate: rate,
         started_at: startedAt,
         finished_at: new Date(),
       },
@@ -93,7 +94,9 @@ export async function runCatalogSync(
 
       // Recompute and update the linked Medusa variant price.
       if (mapping.medusa_variant_id && status === "active") {
-        const marginPct = mapping.margin_pct ?? options.marginPct ?? getDefaultMarginPct()
+        // Margin precedence: explicit per-mapping > sync option > per-category > global.
+        const marginPct =
+          mapping.margin_pct ?? options.marginPct ?? getMarginForCategory(item.category)
         const cop = computeCopPrice(item.price_usd, rate, marginPct)
         await updateProductVariantsWorkflow(container).run({
           input: {
@@ -126,6 +129,7 @@ export async function runCatalogSync(
       prices_updated: pricesUpdated,
       errors,
       message,
+      usd_cop_rate: rate,
       started_at: startedAt,
       finished_at: new Date(),
     },

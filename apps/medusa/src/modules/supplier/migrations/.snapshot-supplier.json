@@ -106,6 +106,22 @@
           "enumItems": [],
           "mappedType": "text"
         },
+        "usd_cop_rate": {
+          "name": "usd_cop_rate",
+          "type": "integer",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "integer"
+        },
         "started_at": {
           "name": "started_at",
           "type": "timestamptz",
