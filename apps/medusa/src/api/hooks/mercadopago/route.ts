@@ -1,6 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules, PaymentWebhookEvents } from "@medusajs/framework/utils"
 import { verifyMpSignature } from "../../../modules/payment-mercadopago/lib/signature"
+import { clientIp, rateLimit } from "../../../lib/rate-limit"
 
 // Provider id segment expected by Medusa's payment webhook pipeline. The module
 // resolves it as `pp_${provider}` -> pp_mercadopago_mercadopago.
@@ -12,6 +13,12 @@ const DEDUPE_TTL_SECONDS = 60 * 60 * 24
 // Medusa's payment pipeline (which fires payment.captured -> Fazer fulfillment).
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const logger = req.scope.resolve("logger")
+
+  // Rate limit abusive bursts (US-10.1 / RUM-65).
+  if (!rateLimit(`mp-webhook:${clientIp(req)}`, 120, 60_000).ok) {
+    return res.status(429).json({ message: "Too many requests" })
+  }
+
   const body = (req.body ?? {}) as {
     id?: number | string
     type?: string

@@ -16,5 +16,12 @@ export default defineMiddlewares({
       method: ["POST"],
       bodyParser: { preserveRawBody: true },
     },
+    // Preserve the raw body to verify the Fazer webhook HMAC signature
+    // (US-2.5 / RUM-20). Public route (no auth).
+    {
+      matcher: "/hooks/fazer",
+      method: ["POST"],
+      bodyParser: { preserveRawBody: true },
+    },
   ],
 })
