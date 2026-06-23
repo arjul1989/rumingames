@@ -4,13 +4,12 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import CartButton from "@modules/layout/components/cart-button"
 import MobileMenu from "@modules/gorumin/components/mobile-menu"
 
-// Gorumin global header (US-7.1 / RUM-37). Community-first navigation:
-// Noticias, Streamers and Tienda, plus cart and account access.
+// Gorumin global header (US-7.1 / RUM-37). Tienda first as primary CTA.
 const NAV_LINKS = [
+  { href: "/store", label: "TIENDA", highlight: true },
   { href: "/noticias", label: "NOTICIAS" },
   { href: "/streamers", label: "STREAMERS" },
-  { href: "/store", label: "TIENDA" },
-]
+] as const
 
 export default async function Nav() {
   return (
@@ -30,9 +29,18 @@ export default async function Nav() {
               <LocalizedClientLink
                 key={link.href}
                 href={link.href}
-                className="font-mono text-label-caps tracking-widest text-on-surface-variant transition-colors duration-300 hover:text-primary"
+                className={
+                  "highlight" in link && link.highlight
+                    ? "brutalist-button relative overflow-hidden bg-primary px-5 py-2.5 font-mono text-label-caps tracking-widest text-on-primary shadow-[0_0_24px_rgba(221,183,255,0.45)] transition-all duration-300 hover:scale-105 hover:shadow-[0_0_32px_rgba(221,183,255,0.6)] active:scale-95"
+                    : "font-mono text-label-caps tracking-widest text-on-surface-variant transition-colors duration-300 hover:text-primary"
+                }
               >
-                {link.label}
+                {"highlight" in link && link.highlight && (
+                  <span className="shimmer-overlay absolute inset-0 animate-shimmer opacity-20" />
+                )}
+                <span className={"highlight" in link && link.highlight ? "relative z-10" : undefined}>
+                  {link.label}
+                </span>
               </LocalizedClientLink>
             ))}
           </div>

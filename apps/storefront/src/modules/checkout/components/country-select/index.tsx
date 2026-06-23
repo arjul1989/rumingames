@@ -1,3 +1,4 @@
+import { addressLabels } from "@lib/i18n/es-co"
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react"
 
 import NativeSelect, {
@@ -10,7 +11,7 @@ const CountrySelect = forwardRef<
   NativeSelectProps & {
     region?: HttpTypes.StoreRegion
   }
->(({ placeholder = "Country", region, defaultValue, ...props }, ref) => {
+>(({ placeholder = addressLabels.country, region, defaultValue, ...props }, ref) => {
   const innerRef = useRef<HTMLSelectElement>(null)
 
   useImperativeHandle<HTMLSelectElement | null, HTMLSelectElement | null>(

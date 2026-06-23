@@ -53,7 +53,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     seo_title: body.seo_title ?? null,
     seo_description: body.seo_description ?? null,
     og_image: body.og_image ?? null,
-  })
+  } as unknown as Parameters<CmsModuleService["createArticles"]>[0])
 
   res.status(201).json({ article })
 }

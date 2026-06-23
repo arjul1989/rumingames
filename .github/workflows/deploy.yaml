@@ -46,6 +46,8 @@ jobs:
 
       - name: Build & push Medusa
         if: ${{ github.event.inputs.service == 'both' || github.event.inputs.service == 'medusa' }}
+        env:
+          SQL_CONN: ${{ secrets.GCP_PROJECT_ID }}:${{ secrets.GCP_REGION }}:gorumin-db
         run: |
           IMG="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${AR_REPO}/${MEDUSA_SERVICE}:${{ github.sha }}"
           docker build -f apps/medusa/Dockerfile -t "$IMG" .
@@ -56,6 +58,27 @@ jobs:
             --platform managed \
             --port 9000 \
             --min-instances 0 \
+            --max-instances 5 \
+            --memory 1Gi \
+            --timeout 300 \
+            --add-cloudsql-instances "$SQL_CONN" \
+            --set-env-vars "\
+          NODE_ENV=production,\
+          DATABASE_URL=postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@/${{ secrets.DB_NAME }}?host=/cloudsql/$SQL_CONN,\
+          JWT_SECRET=${{ secrets.JWT_SECRET }},\
+          COOKIE_SECRET=${{ secrets.COOKIE_SECRET }},\
+          DIGITAL_CODE_ENCRYPTION_KEY=${{ secrets.DIGITAL_CODE_ENCRYPTION_KEY }},\
+          STORE_CORS=${{ secrets.STORE_CORS }},\
+          ADMIN_CORS=${{ secrets.ADMIN_CORS }},\
+          AUTH_CORS=${{ secrets.AUTH_CORS }},\
+          MEDUSA_BACKEND_URL=${{ secrets.MEDUSA_BACKEND_URL }},\
+          STOREFRONT_URL=${{ secrets.STOREFRONT_BASE_URL }},\
+          MP_ACCESS_TOKEN=${{ secrets.MP_ACCESS_TOKEN }},\
+          MP_PUBLIC_KEY=${{ secrets.MP_PUBLIC_KEY }},\
+          MP_WEBHOOK_SECRET=${{ secrets.MP_WEBHOOK_SECRET }},\
+          MP_NOTIFICATION_URL=${{ secrets.MEDUSA_BACKEND_URL }}/hooks/mercadopago,\
+          FAZER_API_KEY=${{ secrets.FAZER_API_KEY }},\
+          REDIS_URL=${{ secrets.REDIS_URL }}" \
             --allow-unauthenticated
 
       - name: Build & push Storefront

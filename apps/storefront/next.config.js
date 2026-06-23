@@ -11,19 +11,29 @@ const S3_PATHNAME = process.env.MEDUSA_CLOUD_S3_PATHNAME
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000"
 
+// Mercado Pago Payment Brick (checkout) — domains required by the SDK iframe/scripts.
+const MP_ORIGINS = [
+  "https://sdk.mercadopago.com",
+  "https://www.mercadopago.com",
+  "https://api.mercadopago.com",
+  "https://http2.mlstatic.com",
+].join(" ")
+
 // Security headers incl. CSP (US-10.1 / RUM-65). The CSP whitelists the Medusa
-// backend, Google Fonts (Material Symbols) and unpkg (Swagger UI at /api/docs).
+// backend, Google Fonts (Material Symbols), Mercado Pago checkout, and unpkg
+// (Swagger UI at /api/docs).
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com",
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com ${MP_ORIGINS}`,
+  `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com ${MP_ORIGINS}`,
   "font-src 'self' https://fonts.gstatic.com data:",
   `img-src 'self' data: blob: https: ${BACKEND_URL}`,
-  `connect-src 'self' ${BACKEND_URL} https: ws: wss:`,
+  `connect-src 'self' ${BACKEND_URL} https: ws: wss: ${MP_ORIGINS}`,
+  `frame-src 'self' ${MP_ORIGINS}`,
   "worker-src 'self' blob:",
 ].join("; ")
 

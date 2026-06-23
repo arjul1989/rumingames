@@ -28,9 +28,11 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       fields: ["id", "display_id", "email"],
       filters: { id: orderIds },
     })
-    data.forEach((o: { id: string; display_id: number; email: string }) => {
-      display.set(o.id, o.display_id)
-      emailByOrder.set(o.id, o.email)
+    data.forEach((row) => {
+      const o = row as { id: string; display_id?: number | string; email?: string | null }
+      if (!o.id) return
+      if (o.display_id != null) display.set(o.id, Number(o.display_id))
+      if (o.email) emailByOrder.set(o.id, o.email)
     })
   }
 

@@ -1,3 +1,4 @@
+import { paymentMethodLabels } from "@lib/i18n/es-co"
 import { CreditCard } from "@medusajs/icons"
 import Bancontact from "@modules/common/icons/bancontact"
 import Ideal from "@modules/common/icons/ideal"
@@ -10,27 +11,27 @@ export const paymentInfoMap: Record<
   { title: string; icon: React.JSX.Element }
 > = {
   pp_stripe_stripe: {
-    title: "Credit card",
+    title: paymentMethodLabels.pp_stripe_stripe,
     icon: <CreditCard />,
   },
   "pp_medusa-payments_default": {
-    title: "Credit card",
+    title: paymentMethodLabels.pp_stripe_stripe,
     icon: <CreditCard />,
   },
   "pp_stripe-ideal_stripe": {
-    title: "iDeal",
+    title: paymentMethodLabels["pp_stripe-ideal_stripe"],
     icon: <Ideal />,
   },
   "pp_stripe-bancontact_stripe": {
-    title: "Bancontact",
+    title: paymentMethodLabels["pp_stripe-bancontact_stripe"],
     icon: <Bancontact />,
   },
   pp_paypal_paypal: {
-    title: "PayPal",
+    title: paymentMethodLabels.pp_paypal_paypal,
     icon: <PayPal />,
   },
   pp_system_default: {
-    title: "Manual Payment",
+    title: paymentMethodLabels.pp_system_default,
     icon: <CreditCard />,
   },
   pp_mercadopago_mercadopago: {

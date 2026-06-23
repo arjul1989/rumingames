@@ -1,3 +1,4 @@
+import { checkoutLabels } from "@lib/i18n/es-co"
 import { retrieveCart } from "@lib/data/cart"
 import { retrieveCustomer } from "@lib/data/customer"
 import PaymentWrapper from "@modules/checkout/components/payment-wrapper"
@@ -7,7 +8,7 @@ import { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 export const metadata: Metadata = {
-  title: "Checkout",
+  title: checkoutLabels.title,
 }
 
 export default async function Checkout() {

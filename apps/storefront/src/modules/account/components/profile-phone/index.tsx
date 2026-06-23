@@ -2,6 +2,7 @@
 
 import React, { useEffect, useActionState } from "react";
 
+import { addressLabels, accountLabels } from "@lib/i18n/es-co"
 import Input from "@modules/common/components/input"
 
 import AccountInfo from "../account-info"
@@ -47,7 +48,7 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
   return (
     <form action={formAction} className="w-full">
       <AccountInfo
-        label="Phone"
+        label={addressLabels.phone}
         currentInfo={`${customer.phone}`}
         isSuccess={successState}
         isError={!!state.error}
@@ -57,7 +58,7 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
       >
         <div className="grid grid-cols-1 gap-y-2">
           <Input
-            label="Phone"
+            label={addressLabels.phone}
             name="phone"
             type="phone"
             autoComplete="phone"

@@ -7,10 +7,11 @@ import {
   permissionsForRole,
   roleHasPermission,
 } from "./admin-roles"
+import { getAuthActorId } from "./auth-context"
 
 // Resolves the Gorumin role for the authenticated admin user (US-9.3 / RUM-63).
 export async function getGoruminRole(req: MedusaRequest): Promise<GoruminAdminRole> {
-  const actorId = req.auth_context?.actor_id
+  const actorId = getAuthActorId(req)
   if (!actorId) return "admin"
 
   try {

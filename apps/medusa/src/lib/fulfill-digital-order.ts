@@ -157,7 +157,12 @@ export async function fulfillDigitalOrder(
         }
 
         await delivery.storeCode(row.id, code, fazerOrder.id)
-        await sendCustomerCode(notification, order.email, item.title, order.display_id)
+        await sendCustomerCode(
+          notification,
+          order.email ?? "",
+          item.title,
+          order.display_id ?? undefined
+        )
         delivered++
         success = true
       } catch (e) {
@@ -175,7 +180,14 @@ export async function fulfillDigitalOrder(
         status: "failed",
         error_message: lastError,
       })
-      await alertAdmin(container, notification, order.display_id, item.title, lastError, orderId)
+      await alertAdmin(
+        container,
+        notification,
+        order.display_id ?? undefined,
+        item.title,
+        lastError,
+        orderId
+      )
     }
   }
 
@@ -189,7 +201,7 @@ async function sendCustomerCode(
   notification: { createNotifications: (n: unknown) => Promise<unknown> },
   to: string,
   productTitle: string,
-  displayId?: number
+  displayId?: number | string
 ) {
   if (!to) return
   await notification.createNotifications({
@@ -209,7 +221,7 @@ async function sendCustomerCode(
 async function alertAdmin(
   container: MedusaContainer,
   notification: { createNotifications: (n: unknown) => Promise<unknown> },
-  displayId: number | undefined,
+  displayId: number | string | undefined,
   productTitle: string,
   error: string,
   orderId: string

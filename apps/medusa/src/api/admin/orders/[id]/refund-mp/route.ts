@@ -1,6 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { refundPaymentWorkflow } from "@medusajs/medusa/core-flows"
+import { getAuthActorId } from "../../../../../lib/auth-context"
 
 // Admin action to refund an order's payment through Mercado Pago (US-3.5 / RUM-27).
 // Runs Medusa's refund workflow (which calls the provider's refundPayment and
@@ -25,9 +26,11 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     return res.status(404).json({ message: "Orden no encontrada." })
   }
 
-  const payments = order.payment_collections?.flatMap(
-    (pc: { payments?: { id: string; captured_at?: string }[] }) => pc.payments ?? []
-  ) ?? []
+  const collections = (order as {
+    payment_collections?: { payments?: { id: string; captured_at?: string }[] }[]
+  }).payment_collections
+
+  const payments = collections?.flatMap((pc) => pc.payments ?? []) ?? []
   // Prefer a captured payment; fall back to the first one.
   const payment = payments.find((p) => p.captured_at) ?? payments[0]
 
@@ -40,7 +43,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       input: {
         payment_id: payment.id,
         amount: body.amount,
-        created_by: req.auth_context?.actor_id,
+        created_by: getAuthActorId(req),
       },
     })
   } catch (e) {

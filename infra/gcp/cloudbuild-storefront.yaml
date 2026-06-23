@@ -1,0 +1,28 @@
+# Cloud Build config for the Gorumin storefront (build-time public envs).
+substitutions:
+  _IMAGE: ""
+  _PUBLISHABLE_KEY: ""
+  _BACKEND_URL: ""
+  _BASE_URL: ""
+  _DEFAULT_REGION: "co"
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - apps/storefront/Dockerfile
+      - --build-arg
+      - NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=${_PUBLISHABLE_KEY}
+      - --build-arg
+      - NEXT_PUBLIC_MEDUSA_BACKEND_URL=${_BACKEND_URL}
+      - --build-arg
+      - NEXT_PUBLIC_BASE_URL=${_BASE_URL}
+      - --build-arg
+      - NEXT_PUBLIC_DEFAULT_REGION=${_DEFAULT_REGION}
+      - -t
+      - ${_IMAGE}
+      - .
+images:
+  - ${_IMAGE}
+timeout: 1200s

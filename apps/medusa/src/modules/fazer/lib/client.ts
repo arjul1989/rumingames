@@ -23,7 +23,8 @@ const DEFAULT_BASE_URL = "https://api.fzr.cards/api/v2"
 const DEFAULT_TIMEOUT_MS = 30_000
 const DEFAULT_RETRIES = 3
 
-const defaultSleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+const defaultSleep = (ms: number): Promise<void> =>
+  new Promise((r) => setTimeout(r, ms))
 
 /**
  * Minimal typed client for the Fazer Cards reseller API.

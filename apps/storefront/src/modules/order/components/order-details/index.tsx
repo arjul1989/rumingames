@@ -1,4 +1,5 @@
 import { HttpTypes } from "@medusajs/types"
+import { orderLabels, translateOrderStatus } from "@lib/i18n/es-co"
 import { Text } from "@modules/common/components/ui"
 
 type OrderDetailsProps = {
@@ -7,50 +8,40 @@ type OrderDetailsProps = {
 }
 
 const OrderDetails = ({ order, showStatus }: OrderDetailsProps) => {
-  const formatStatus = (str: string) => {
-    const formatted = str.split("_").join(" ")
-
-    return formatted.slice(0, 1).toUpperCase() + formatted.slice(1)
-  }
-
   return (
     <div>
-      <Text>
-        We have sent the order confirmation details to{" "}
-        <span
-          className="text-ui-fg-medium-plus font-semibold"
-          data-testid="order-email"
-        >
-          {order.email}
-        </span>
-        .
-      </Text>
+      <Text>{orderLabels.confirmationSent(order.email ?? "")}</Text>
       <Text className="mt-2">
-        Order date:{" "}
+        {orderLabels.orderDate}{" "}
         <span data-testid="order-date">
-          {new Date(order.created_at).toDateString()}
+          {new Date(order.created_at).toLocaleDateString("es-CO", {
+            day: "2-digit",
+            month: "long",
+            year: "numeric",
+          })}
         </span>
       </Text>
       <Text className="mt-2 text-ui-fg-interactive">
-        Order number: <span data-testid="order-id">{order.display_id}</span>
+        {orderLabels.orderNumber}{" "}
+        <span data-testid="order-id">{order.display_id}</span>
       </Text>
 
       <div className="flex items-center text-compact-small gap-x-4 mt-4">
         {showStatus && (
           <>
             <Text>
-              Order status:{" "}
+              {orderLabels.orderStatus}{" "}
               <span className="text-ui-fg-subtle " data-testid="order-status">
-                {formatStatus(order.fulfillment_status)}
+                {translateOrderStatus(order.fulfillment_status)}
               </span>
             </Text>
             <Text>
-              Payment status:{" "}
+              {orderLabels.paymentStatus}{" "}
               <span
                 className="text-ui-fg-subtle "
                 sata-testid="order-payment-status"
               >
-                {formatStatus(order.payment_status)}
+                {translateOrderStatus(order.payment_status)}
               </span>
             </Text>
           </>

@@ -1,4 +1,5 @@
 import { Disclosure } from "@headlessui/react"
+import { accountLabels } from "@lib/i18n/es-co"
 import { Badge, Button, clx } from "@modules/common/components/ui"
 import { useEffect } from "react"
 
@@ -22,7 +23,7 @@ const AccountInfo = ({
   isSuccess,
   isError,
   clearState,
-  errorMessage = "An error occurred, please try again",
+  errorMessage = accountLabels.errorRetry,
   children,
   'data-testid': dataTestid
 }: AccountInfoProps) => {
@@ -63,12 +64,11 @@ const AccountInfo = ({
             data-testid="edit-button"
             data-active={state}
           >
-            {state ? "Cancel" : "Edit"}
+            {state ? accountLabels.cancel : accountLabels.edit}
           </Button>
         </div>
       </div>
 
-      {/* Success state */}
       <Disclosure>
         <Disclosure.Panel
           static
@@ -82,12 +82,11 @@ const AccountInfo = ({
           data-testid="success-message"
         >
           <Badge className="p-2 my-4" color="green">
-            <span>{label} updated succesfully</span>
+            <span>{accountLabels.updatedOk(label)}</span>
           </Badge>
         </Disclosure.Panel>
       </Disclosure>
 
-      {/* Error state  */}
       <Disclosure>
         <Disclosure.Panel
           static
@@ -126,7 +125,7 @@ const AccountInfo = ({
                 type="submit"
                 data-testid="save-button"
               >
-                Save changes
+                {accountLabels.saveChanges}
               </Button>
             </div>
           </div>

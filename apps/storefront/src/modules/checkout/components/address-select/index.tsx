@@ -3,6 +3,7 @@ import { ChevronUpDown } from "@medusajs/icons"
 import { clx } from "@modules/common/components/ui"
 import { Fragment, useMemo } from "react"
 
+import { addressLabels } from "@lib/i18n/es-co"
 import compareAddresses from "@lib/util/compare-addresses"
 import { HttpTypes } from "@medusajs/types"
 import Radio from "@modules/common/components/radio"
@@ -44,7 +45,7 @@ const AddressSelect = ({
               <span className="block truncate">
                 {selectedAddress
                   ? selectedAddress.address_1
-                  : "Choose an address"}
+                  : addressLabels.chooseAddress}
               </span>
               <ChevronUpDown
                 className={clx("transition-rotate duration-200", {

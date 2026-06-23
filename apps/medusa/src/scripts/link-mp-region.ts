@@ -33,9 +33,9 @@ export default async function linkMpRegion({ container }: ExecArgs) {
   for (const region of regions) {
     if (region.currency_code !== "cop") continue
 
-    const current = (region.payment_providers ?? []).map(
-      (p: { id: string }) => p.id
-    )
+    const current = (region.payment_providers ?? [])
+      .map((p) => p?.id)
+      .filter((id): id is string => Boolean(id))
     if (current.includes(MP_PROVIDER_ID)) {
       logger.info(`Region ${region.name} already linked to Mercado Pago.`)
       continue

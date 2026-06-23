@@ -1,5 +1,6 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { getAuthActorId } from "../../../../../lib/auth-context"
 import { DIGITAL_DELIVERY_MODULE } from "../../../../../modules/digital-delivery"
 import type DigitalDeliveryModuleService from "../../../../../modules/digital-delivery/service"
 
@@ -7,7 +8,7 @@ import type DigitalDeliveryModuleService from "../../../../../modules/digital-de
 // Auth is enforced by middleware; here we verify ownership before decrypting.
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const orderId = req.params.id
-  const customerId = req.auth_context?.actor_id
+  const customerId = getAuthActorId(req)
 
   if (!customerId) {
     return res.status(401).json({ message: "No autenticado." })

@@ -25,19 +25,22 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     return res.status(404).json({ message: "Orden no encontrada." })
   }
 
-  const payments = order.payment_collections?.flatMap(
-    (pc: { payments?: { data?: Record<string, unknown> }[] }) => pc.payments ?? []
-  )
+  const collections = (order as {
+    payment_collections?: { payments?: { data?: Record<string, unknown> }[] }[]
+  }).payment_collections
+
+  const payments = collections?.flatMap((pc) => pc.payments ?? [])
   const mpStatus = payments?.find((p) => p?.data?.mp_status)?.data?.mp_status as
     | string
     | undefined
 
-  const status = normalizePaymentStatus(order.payment_status, mpStatus)
+  const paymentStatus = (order as { payment_status?: string }).payment_status
+  const status = normalizePaymentStatus(paymentStatus, mpStatus)
 
   res.json({
     order_id: order.id,
     status,
-    payment_status: order.payment_status,
+    payment_status: paymentStatus ?? null,
     mp_status: mpStatus ?? null,
   })
 }

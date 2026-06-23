@@ -16,19 +16,22 @@ export default async function cancelUnpaidOrdersJob(container: MedusaContainer) 
     entity: "order",
     fields: ["id", "display_id", "status", "payment_status", "created_at"],
     filters: {
-      // Still open and not yet paid.
       status: ["pending", "requires_action"],
-      payment_status: ["not_paid", "awaiting", "requires_action"],
       created_at: { $lt: cutoff },
     },
   })
 
-  if (!orders.length) {
+  const unpaid = orders.filter((order) => {
+    const ps = (order as { payment_status?: string }).payment_status
+    return !ps || ["not_paid", "awaiting", "requires_action"].includes(ps)
+  })
+
+  if (!unpaid.length) {
     return
   }
 
   let canceled = 0
-  for (const order of orders) {
+  for (const order of unpaid) {
     try {
       await cancelOrderWorkflow(container).run({ input: { order_id: order.id } })
       canceled++
@@ -39,7 +42,7 @@ export default async function cancelUnpaidOrdersJob(container: MedusaContainer) 
     }
   }
 
-  logger.info(`Cancelled ${canceled}/${orders.length} unpaid orders older than ${TIMEOUT_MINUTES}m.`)
+  logger.info(`Cancelled ${canceled}/${unpaid.length} unpaid orders older than ${TIMEOUT_MINUTES}m.`)
 }
 
 export const config = {

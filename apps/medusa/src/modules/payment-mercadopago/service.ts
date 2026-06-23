@@ -130,9 +130,17 @@ class MercadoPagoProviderService extends AbstractPaymentProvider<MercadoPagoOpti
       )
     }
 
+    const amount = data.amount
+    if (amount == null) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        "Mercado Pago authorization requires `amount` in the payment session."
+      )
+    }
+
     const sessionId = (data.session_id as string) ?? crypto.randomUUID()
     const payload: MpCreatePaymentInput = {
-      transaction_amount: this.toNumber(data.amount ?? input.amount),
+      transaction_amount: this.toNumber(amount),
       token,
       installments: (data.installments as number) ?? 1,
       payment_method_id: data.payment_method_id as string | undefined,

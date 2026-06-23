@@ -4,6 +4,7 @@ import { HttpTypes } from "@medusajs/types"
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import ProductActions from "@modules/gorumin/components/product-actions"
+import { imageForProduct } from "@lib/platform-assets"
 import {
   getDeliveryType,
   getPlatformLabel,
@@ -22,7 +23,7 @@ export default function ProductTemplate({
   const platformLabel = getPlatformLabel(product)
   const typeLabel = getProductTypeLabel(product)
   const deliveryType = getDeliveryType(product)
-  const image = product.thumbnail || product.images?.[0]?.url
+  const image = imageForProduct(product)
 
   return (
     <div className="content-container py-12">

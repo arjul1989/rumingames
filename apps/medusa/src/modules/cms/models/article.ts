@@ -16,9 +16,9 @@ const Article = model
     author: model.text().nullable(),
     status: model.enum(["draft", "published", "archived"]).default("draft"),
     published_at: model.dateTime().nullable(),
-    related_product_ids: model.json().default([]),
+    related_product_ids: model.json().nullable(),
     // Tags referenced by id (kept simple; the article_tag table is the catalog).
-    tag_ids: model.json().default([]),
+    tag_ids: model.json().nullable(),
     // SEO / Open Graph overrides (US-4.1 / §3.2). Fall back to title/excerpt/
     // cover_image at the rendering layer when empty.
     seo_title: model.text().nullable(),

@@ -1,3 +1,4 @@
+import { cartLabels } from "@lib/i18n/es-co"
 import { HttpTypes } from "@medusajs/types"
 import { Text } from "@modules/common/components/ui"
 
@@ -18,7 +19,7 @@ const LineItemOptions = ({
       data-value={dataValue}
       className="inline-block txt-medium text-ui-fg-subtle w-full overflow-hidden text-ellipsis"
     >
-      Variant: {variant?.title}
+      {cartLabels.variant}: {variant?.title}
     </Text>
   )
 }

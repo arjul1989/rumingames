@@ -2,6 +2,7 @@ import Image from "next/image"
 import { HttpTypes } from "@medusajs/types"
 import { PLATFORM_LABELS, type Platform } from "@gorumin/types"
 import { getProductPrice } from "@lib/util/get-product-price"
+import { imageForProduct } from "@lib/platform-assets"
 import { formatCop } from "@modules/gorumin/lib/product-meta"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
@@ -15,6 +16,7 @@ export default function ProductCard({
   const platformLabel = platform ? PLATFORM_LABELS[platform] : null
 
   const { cheapestPrice } = getProductPrice({ product })
+  const image = imageForProduct(product)
 
   return (
     <LocalizedClientLink
@@ -24,9 +26,9 @@ export default function ProductCard({
       <div className="absolute -right-10 -top-10 h-24 w-24 rounded-full bg-secondary/10 blur-3xl transition-all group-hover:bg-secondary/20" />
 
       <div className="relative mb-4 aspect-square w-full overflow-hidden rounded-lg bg-surface-container-low">
-        {product.thumbnail ? (
+        {image ? (
           <Image
-            src={product.thumbnail}
+            src={image}
             alt={product.title}
             fill
             sizes="(max-width: 768px) 100vw, 320px"

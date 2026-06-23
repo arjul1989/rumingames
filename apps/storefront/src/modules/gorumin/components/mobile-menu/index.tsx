@@ -4,11 +4,11 @@ import { useState } from "react"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 const LINKS = [
+  { href: "/store", label: "TIENDA", highlight: true },
   { href: "/noticias", label: "NOTICIAS" },
   { href: "/streamers", label: "STREAMERS" },
-  { href: "/store", label: "TIENDA" },
   { href: "/account", label: "MI CUENTA" },
-]
+] as const
 
 export default function MobileMenu() {
   const [open, setOpen] = useState(false)
@@ -32,7 +32,11 @@ export default function MobileMenu() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setOpen(false)}
-                className="font-mono py-3 text-label-caps tracking-widest text-on-surface-variant transition-colors hover:text-primary"
+                className={
+                  "highlight" in link && link.highlight
+                    ? "brutalist-button my-1 bg-primary px-4 py-3 text-center font-mono text-label-caps tracking-widest text-on-primary shadow-[0_0_20px_rgba(221,183,255,0.35)]"
+                    : "font-mono py-3 text-label-caps tracking-widest text-on-surface-variant transition-colors hover:text-primary"
+                }
               >
                 {link.label}
               </LocalizedClientLink>

@@ -3,7 +3,7 @@
 import { Badge, Heading, Input, Label, Text } from "@modules/common/components/ui"
 import React from "react"
 
-import { applyPromotions } from "@lib/data/cart"
+import { checkoutLabels } from "@lib/i18n/es-co"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 import Trash from "@modules/common/icons/trash"
@@ -64,7 +64,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
               className="txt-medium text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
               data-testid="add-discount-button"
             >
-              Add Promotion Code(s)
+              {checkoutLabels.addPromoCode}
             </button>
 
             {/* <Tooltip content="You can add multiple promotion codes">
@@ -87,7 +87,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                   variant="secondary"
                   data-testid="discount-apply-button"
                 >
-                  Apply
+                  {checkoutLabels.apply}
                 </SubmitButton>
               </div>
 
@@ -103,7 +103,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
           <div className="w-full flex items-center">
             <div className="flex flex-col w-full">
               <Heading className="txt-medium mb-2">
-                Promotion(s) applied:
+                {checkoutLabels.promosApplied}
               </Heading>
 
               {promotions.map((promotion) => {
@@ -158,7 +158,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                       >
                         <Trash size={14} />
                         <span className="sr-only">
-                          Remove discount code from order
+                          {checkoutLabels.removePromo}
                         </span>
                       </button>
                     )}
