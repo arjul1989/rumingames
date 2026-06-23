@@ -2,6 +2,7 @@ import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { ArrowPath } from "@medusajs/icons"
 import { Container, Heading, Button, Table, Badge, Select, Text, toast } from "@medusajs/ui"
 import { useEffect, useState } from "react"
+import RoleGate from "../../components/role-gate"
 
 type Delivery = {
   id: string
@@ -71,6 +72,7 @@ const EntregasPage = () => {
   const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleString("es-CO") : "—")
 
   return (
+    <RoleGate permission="deliveries">
     <Container className="divide-y p-0">
       <div className="flex flex-col gap-4 px-6 py-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -150,6 +152,7 @@ const EntregasPage = () => {
         </Table.Body>
       </Table>
     </Container>
+    </RoleGate>
   )
 }
 

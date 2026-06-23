@@ -1,18 +1,23 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { Container, Heading, Button, Text, toast } from "@medusajs/ui"
 import { useState } from "react"
+import { useGoruminRole } from "../lib/use-gorumin-role"
 
 type OrderDetail = { id: string; payment_status?: string }
 
 // Adds a "Reembolsar (MP)" action to the order details page (US-3.5 / RUM-27).
 const OrderRefundWidget = ({ data }: { data: OrderDetail }) => {
-  const [loading, setLoading] = useState(false)
+  const { loading, can } = useGoruminRole()
+  const [loadingRefund, setLoadingRefund] = useState(false)
+
+  if (loading) return null
+  if (!can("refunds")) return null
 
   const refund = async () => {
     if (!window.confirm("¿Reembolsar el pago de esta orden vía Mercado Pago?")) {
       return
     }
-    setLoading(true)
+    setLoadingRefund(true)
     try {
       const res = await fetch(`/admin/orders/${data.id}/refund-mp`, {
         method: "POST",
@@ -28,7 +33,7 @@ const OrderRefundWidget = ({ data }: { data: OrderDetail }) => {
     } catch (e) {
       toast.error(`No se pudo reembolsar: ${(e as Error).message}`)
     } finally {
-      setLoading(false)
+      setLoadingRefund(false)
     }
   }
 
@@ -36,7 +41,7 @@ const OrderRefundWidget = ({ data }: { data: OrderDetail }) => {
     <Container className="divide-y p-0">
       <div className="flex items-center justify-between px-6 py-4">
         <Heading level="h2">Mercado Pago</Heading>
-        <Button size="small" variant="danger" onClick={refund} isLoading={loading}>
+        <Button size="small" variant="danger" onClick={refund} isLoading={loadingRefund}>
           Reembolsar (MP)
         </Button>
       </div>

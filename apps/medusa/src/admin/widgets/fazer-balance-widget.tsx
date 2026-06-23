@@ -1,6 +1,7 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { Container, Heading, Text, Badge, Button } from "@medusajs/ui"
 import { useEffect, useState } from "react"
+import { useGoruminRole } from "../lib/use-gorumin-role"
 
 type BalanceState = {
   configured: boolean
@@ -12,6 +13,7 @@ type BalanceState = {
 }
 
 const FazerBalanceWidget = () => {
+  const { loading: roleLoading, can, permissions } = useGoruminRole()
   const [state, setState] = useState<BalanceState | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -28,8 +30,12 @@ const FazerBalanceWidget = () => {
   }
 
   useEffect(() => {
+    if (roleLoading || !permissions.includes("fazer")) return
     load()
-  }, [])
+  }, [roleLoading, permissions])
+
+  if (roleLoading) return null
+  if (!can("fazer")) return null
 
   return (
     <Container className="divide-y p-0">

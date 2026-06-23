@@ -1,5 +1,6 @@
 import { MedusaContainer } from "@medusajs/framework"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { emitMonitorAlert } from "./monitoring"
 import { SUPPLIER_MODULE } from "../modules/supplier"
 import { FAZER_MODULE } from "../modules/fazer"
 import { DIGITAL_DELIVERY_MODULE } from "../modules/digital-delivery"
@@ -174,7 +175,7 @@ export async function fulfillDigitalOrder(
         status: "failed",
         error_message: lastError,
       })
-      await alertAdmin(notification, order.display_id, item.title, lastError)
+      await alertAdmin(container, notification, order.display_id, item.title, lastError, orderId)
     }
   }
 
@@ -206,11 +207,20 @@ async function sendCustomerCode(
 }
 
 async function alertAdmin(
+  container: MedusaContainer,
   notification: { createNotifications: (n: unknown) => Promise<unknown> },
   displayId: number | undefined,
   productTitle: string,
-  error: string
+  error: string,
+  orderId: string
 ) {
+  await emitMonitorAlert(container, {
+    event_type: "fulfillment.failed",
+    severity: "ERROR",
+    message: `Fulfillment falló para orden #${displayId ?? orderId}: ${productTitle}`,
+    context: { order_id: orderId, display_id: displayId, product: productTitle, error },
+  })
+
   const to = process.env.ADMIN_ALERT_EMAIL || "admin@gorumin.com"
   await notification.createNotifications({
     to,

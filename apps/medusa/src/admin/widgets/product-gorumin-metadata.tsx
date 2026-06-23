@@ -1,6 +1,7 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { Container, Heading, Button, Select, Label, Badge, Text, toast } from "@medusajs/ui"
 import { useEffect, useState } from "react"
+import { useGoruminRole } from "../lib/use-gorumin-role"
 
 type ProductDetail = { id: string; metadata?: Record<string, unknown> | null }
 
@@ -34,6 +35,7 @@ type Meta = {
 // Gorumin attributes editor injected into the native product page (US-1.2 /
 // product admin §2.2). Persists to product.metadata.
 const ProductGoruminMetadata = ({ data }: { data: ProductDetail }) => {
+  const { loading: roleLoading, can } = useGoruminRole()
   const initial = (data.metadata ?? {}) as Meta
   const [meta, setMeta] = useState<Meta>(initial)
   const [saving, setSaving] = useState(false)
@@ -41,6 +43,9 @@ const ProductGoruminMetadata = ({ data }: { data: ProductDetail }) => {
   useEffect(() => {
     setMeta((data.metadata ?? {}) as Meta)
   }, [data.id])
+
+  if (roleLoading) return null
+  if (!can("supplier")) return null
 
   const dirty = JSON.stringify(meta) !== JSON.stringify(initial)
 

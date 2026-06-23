@@ -1,6 +1,7 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { Container, Heading, Button, Text, Badge, toast } from "@medusajs/ui"
 import { useEffect, useState } from "react"
+import { useGoruminRole } from "../lib/use-gorumin-role"
 
 type SyncLog = {
   status: "success" | "partial" | "failed"
@@ -18,6 +19,7 @@ const STATUS_COLOR: Record<SyncLog["status"], "green" | "orange" | "red"> = {
 }
 
 const FazerSyncWidget = () => {
+  const { loading: roleLoading, can, permissions } = useGoruminRole()
   const [last, setLast] = useState<SyncLog | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -34,8 +36,12 @@ const FazerSyncWidget = () => {
   }
 
   useEffect(() => {
+    if (roleLoading || !permissions.includes("fazer")) return
     loadLast()
-  }, [])
+  }, [roleLoading, permissions])
+
+  if (roleLoading) return null
+  if (!can("fazer")) return null
 
   const runSync = async () => {
     setLoading(true)

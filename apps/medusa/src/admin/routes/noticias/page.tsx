@@ -14,6 +14,7 @@ import {
   toast,
 } from "@medusajs/ui"
 import { useEffect, useState } from "react"
+import RoleGate from "../../components/role-gate"
 
 type Category = { id: string; name: string }
 type Tag = { id: string; name: string; slug: string }
@@ -208,6 +209,7 @@ const NoticiasPage = () => {
   }
 
   return (
+    <RoleGate permission="cms">
     <Container className="divide-y p-0">
       <div className="flex items-center justify-between px-6 py-4">
         <Heading level="h1">Noticias</Heading>
@@ -497,6 +499,7 @@ const NoticiasPage = () => {
         </FocusModal.Content>
       </FocusModal>
     </Container>
+    </RoleGate>
   )
 }
 

@@ -1,0 +1,30 @@
+name: Uptime check
+
+# Polls Medusa /health (US-10.3 / RUM-67). Works without GCP; configure the
+# secret MEDUSA_HEALTH_URL (e.g. https://api.gorumin.com/health).
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Medusa health
+        env:
+          URL: ${{ secrets.MEDUSA_HEALTH_URL || 'http://localhost:9000/health' }}
+        run: |
+          echo "GET $URL"
+          code=$(curl -s -o /tmp/health.json -w "%{http_code}" --max-time 15 "$URL")
+          cat /tmp/health.json
+          if [ "$code" != "200" ]; then
+            echo "Health check failed with HTTP $code"
+            exit 1
+          fi
+          status=$(python3 -c "import json;print(json.load(open('/tmp/health.json')).get('status',''))")
+          if [ "$status" != "ok" ]; then
+            echo "Health status is $status (expected ok)"
+            exit 1
+          fi
+          echo "OK — status=$status"

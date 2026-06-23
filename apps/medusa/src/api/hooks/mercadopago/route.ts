@@ -2,6 +2,7 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules, PaymentWebhookEvents } from "@medusajs/framework/utils"
 import { verifyMpSignature } from "../../../modules/payment-mercadopago/lib/signature"
 import { clientIp, rateLimit } from "../../../lib/rate-limit"
+import { emitMonitorAlert } from "../../../lib/monitoring"
 
 // Provider id segment expected by Medusa's payment webhook pipeline. The module
 // resolves it as `pp_${provider}` -> pp_mercadopago_mercadopago.
@@ -41,6 +42,12 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     })
     if (!valid) {
       logger.warn("Mercado Pago webhook: invalid signature, rejecting.")
+      await emitMonitorAlert(req.scope, {
+        event_type: "payment.webhook.error",
+        severity: "WARNING",
+        message: "Webhook Mercado Pago rechazado: firma inválida",
+        context: { data_id: dataId, request_id: req.headers["x-request-id"] },
+      })
       return res.status(401).json({ message: "Invalid signature" })
     }
   } else {
@@ -77,6 +84,12 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     })
   } catch (e) {
     logger.error(`Mercado Pago webhook processing failed: ${(e as Error).message}`)
+    await emitMonitorAlert(req.scope, {
+      event_type: "payment.webhook.error",
+      severity: "ERROR",
+      message: `Error procesando webhook Mercado Pago: ${(e as Error).message}`,
+      context: { data_id: dataId, notification_id: notificationId },
+    })
     return res.status(400).json({ message: "Webhook processing error" })
   }
 

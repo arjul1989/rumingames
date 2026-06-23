@@ -15,6 +15,7 @@ import {
   toast,
 } from "@medusajs/ui"
 import { useEffect, useState } from "react"
+import RoleGate from "../../components/role-gate"
 
 type Streamer = {
   id: string
@@ -99,6 +100,7 @@ const StreamersPage = () => {
   }
 
   return (
+    <RoleGate permission="cms">
     <Container className="divide-y p-0">
       <div className="flex items-center justify-between px-6 py-4">
         <Heading level="h1">Streamers</Heading>
@@ -223,6 +225,7 @@ const StreamersPage = () => {
         </FocusModal.Content>
       </FocusModal>
     </Container>
+    </RoleGate>
   )
 }
 

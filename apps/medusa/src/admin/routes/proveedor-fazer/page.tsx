@@ -12,6 +12,7 @@ import {
   toast,
 } from "@medusajs/ui"
 import { useEffect, useState } from "react"
+import RoleGate from "../../components/role-gate"
 
 type Mapping = {
   id: string
@@ -119,6 +120,7 @@ const FazerPage = () => {
     s ? new Date(s).toLocaleString("es-CO") : "Nunca"
 
   return (
+    <RoleGate permission="fazer">
     <Container className="divide-y p-0">
       <div className="flex flex-col gap-4 px-6 py-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -257,6 +259,7 @@ const FazerPage = () => {
         </Table.Body>
       </Table>
     </Container>
+    </RoleGate>
   )
 }
 
