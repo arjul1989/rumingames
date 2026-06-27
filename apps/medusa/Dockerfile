@@ -32,4 +32,5 @@ COPY --from=build /app/apps/medusa/.medusa/server ./apps/medusa/.medusa/server
 WORKDIR /app/apps/medusa/.medusa/server
 ENV PORT=9000
 EXPOSE 9000
-CMD ["sh", "-c", "npx medusa db:migrate && npx medusa start"]
+# Migrations run via Cloud Run Job before deploy (see deploy-prod.sh).
+CMD ["npx", "medusa", "start"]

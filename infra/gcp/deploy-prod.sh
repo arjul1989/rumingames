@@ -158,11 +158,45 @@ EOF
   [[ -n "${EPAYCO_THREE_DS_AUTH_TYPE:-}" ]] && echo "EPAYCO_THREE_DS_AUTH_TYPE: \"${EPAYCO_THREE_DS_AUTH_TYPE}\"" >>"$env_file"
   echo "MOCK_EPAYCO: \"${MOCK_EPAYCO:-false}\"" >>"$env_file"
 
+  run_medusa_migrate() {
+    local img="$1"
+    local job="${MEDUSA_SERVICE:-gorumin-medusa}-migrate"
+    echo "==> DB migrations ($job)"
+    if gcloud run jobs describe "$job" --region "$GCP_REGION" &>/dev/null; then
+      gcloud run jobs update "$job" \
+        --image "$img" \
+        --region "$GCP_REGION" \
+        --command npx \
+        --args medusa,db:migrate \
+        --set-cloudsql-instances "$CONN_NAME" \
+        --env-vars-file "$env_file" \
+        --task-timeout 600 \
+        --max-retries 0 \
+        --quiet
+    else
+      gcloud run jobs create "$job" \
+        --image "$img" \
+        --region "$GCP_REGION" \
+        --command npx \
+        --args medusa,db:migrate \
+        --set-cloudsql-instances "$CONN_NAME" \
+        --env-vars-file "$env_file" \
+        --task-timeout 600 \
+        --max-retries 0 \
+        --quiet
+    fi
+    gcloud run jobs execute "$job" --region "$GCP_REGION" --wait --quiet
+  }
+
+  run_medusa_migrate "$img"
+
   gcloud run deploy "${MEDUSA_SERVICE:-gorumin-medusa}" \
     --image "$img" \
     --region "$GCP_REGION" \
     --platform managed \
     --port 9000 \
+    --command npx \
+    --args medusa,start \
     --min-instances 0 \
     --max-instances 5 \
     --memory 1Gi \
