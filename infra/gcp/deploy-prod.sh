@@ -112,7 +112,7 @@ MP_CALLBACK_URL: "${MP_CALLBACK_URL:-${STOREFRONT_BASE_URL}/co/checkout/pending}
 MP_LOCALE: es-CO
 MP_STATEMENT_DESCRIPTOR: GORUMIN
 EOF
-  [[ -n "${REDIS_URL:-}" ]] && echo "REDIS_URL: \"${REDIS_URL}\"" >>"$env_file"
+  [[ -n "${REDIS_URL:-}" && "${REDIS_URL}" != *"localhost"* && "${REDIS_URL}" != *"127.0.0.1"* ]] && echo "REDIS_URL: \"${REDIS_URL}\"" >>"$env_file"
   [[ -n "${FAZER_API_KEY:-}" ]] && echo "FAZER_API_KEY: \"${FAZER_API_KEY}\"" >>"$env_file"
   [[ -n "${FAZER_BASE_URL:-}" ]] && echo "FAZER_BASE_URL: \"${FAZER_BASE_URL}\"" >>"$env_file"
   [[ -n "${FAZER_BALANCE_ALERT_THRESHOLD:-}" ]] && echo "FAZER_BALANCE_ALERT_THRESHOLD: \"${FAZER_BALANCE_ALERT_THRESHOLD}\"" >>"$env_file"
