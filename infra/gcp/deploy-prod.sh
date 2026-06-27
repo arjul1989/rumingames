@@ -161,7 +161,33 @@ EOF
   run_medusa_migrate() {
     local img="$1"
     local job="${MEDUSA_SERVICE:-gorumin-medusa}-migrate"
-    echo "==> DB migrations ($job)"
+
+    if command -v cloud-sql-proxy &>/dev/null; then
+      local proxy_port="${MIGRATE_PROXY_PORT:-5434}"
+      local proxy_pid=""
+      echo "==> DB migrations (cloud-sql-proxy on 127.0.0.1:${proxy_port})"
+      cloud-sql-proxy "$CONN_NAME" \
+        --port "$proxy_port" \
+        --quota-project "$GCP_PROJECT_ID" \
+        --gcloud-auth &
+      proxy_pid=$!
+      trap 'kill "$proxy_pid" 2>/dev/null || true' RETURN
+      for _ in $(seq 1 30); do
+        (echo >/dev/tcp/127.0.0.1/"$proxy_port") &>/dev/null && break
+        sleep 0.5
+      done
+      (
+        cd "$ROOT/apps/medusa"
+        DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@127.0.0.1:${proxy_port}/${DB_NAME}" \
+          NODE_ENV=production \
+          npx medusa db:migrate
+      )
+      kill "$proxy_pid" 2>/dev/null || true
+      wait "$proxy_pid" 2>/dev/null || true
+      return
+    fi
+
+    echo "==> DB migrations ($job via Cloud Run Job)"
     if gcloud run jobs describe "$job" --region "$GCP_REGION" &>/dev/null; then
       gcloud run jobs update "$job" \
         --image "$img" \
