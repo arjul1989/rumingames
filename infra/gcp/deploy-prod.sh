@@ -140,6 +140,23 @@ EOF
   [[ -n "${BINANCE_PAY_MERCHANT_ID:-}" ]] && echo "BINANCE_PAY_MERCHANT_ID: \"${BINANCE_PAY_MERCHANT_ID}\"" >>"$env_file"
   [[ -n "${BINANCE_PAY_CERTIFICATE_SN:-}" ]] && echo "BINANCE_PAY_CERTIFICATE_SN: \"${BINANCE_PAY_CERTIFICATE_SN}\"" >>"$env_file"
   [[ -n "${BINANCE_PAY_PRIVATE_KEY:-}" ]] && echo "BINANCE_PAY_PRIVATE_KEY: \"${BINANCE_PAY_PRIVATE_KEY}\"" >>"$env_file"
+  [[ -n "${WOMPI_PUBLIC_KEY:-}" ]] && echo "WOMPI_PUBLIC_KEY: \"${WOMPI_PUBLIC_KEY}\"" >>"$env_file"
+  [[ -n "${WOMPI_PRIVATE_KEY:-}" ]] && echo "WOMPI_PRIVATE_KEY: \"${WOMPI_PRIVATE_KEY}\"" >>"$env_file"
+  [[ -n "${WOMPI_EVENTS_SECRET:-}" ]] && echo "WOMPI_EVENTS_SECRET: \"${WOMPI_EVENTS_SECRET}\"" >>"$env_file"
+  [[ -n "${WOMPI_INTEGRITY_SECRET:-}" ]] && echo "WOMPI_INTEGRITY_SECRET: \"${WOMPI_INTEGRITY_SECRET}\"" >>"$env_file"
+  [[ -n "${WOMPI_API_BASE_URL:-}" ]] && echo "WOMPI_API_BASE_URL: \"${WOMPI_API_BASE_URL}\"" >>"$env_file"
+  [[ -n "${WOMPI_NOTIFICATION_URL:-}" ]] && echo "WOMPI_NOTIFICATION_URL: \"${WOMPI_NOTIFICATION_URL}\"" >>"$env_file"
+  echo "WOMPI_THREE_DS_ENABLED: \"${WOMPI_THREE_DS_ENABLED:-true}\"" >>"$env_file"
+  [[ -n "${WOMPI_THREE_DS_AUTH_TYPE:-}" ]] && echo "WOMPI_THREE_DS_AUTH_TYPE: \"${WOMPI_THREE_DS_AUTH_TYPE}\"" >>"$env_file"
+  echo "MOCK_WOMPI: \"${MOCK_WOMPI:-false}\"" >>"$env_file"
+  [[ -n "${EPAYCO_PUBLIC_KEY:-}" ]] && echo "EPAYCO_PUBLIC_KEY: \"${EPAYCO_PUBLIC_KEY}\"" >>"$env_file"
+  [[ -n "${EPAYCO_PRIVATE_KEY:-}" ]] && echo "EPAYCO_PRIVATE_KEY: \"${EPAYCO_PRIVATE_KEY}\"" >>"$env_file"
+  echo "EPAYCO_TEST_MODE: \"${EPAYCO_TEST_MODE:-false}\"" >>"$env_file"
+  [[ -n "${EPAYCO_CONFIRMATION_SECRET:-}" ]] && echo "EPAYCO_CONFIRMATION_SECRET: \"${EPAYCO_CONFIRMATION_SECRET}\"" >>"$env_file"
+  [[ -n "${EPAYCO_NOTIFICATION_URL:-}" ]] && echo "EPAYCO_NOTIFICATION_URL: \"${EPAYCO_NOTIFICATION_URL}\"" >>"$env_file"
+  echo "EPAYCO_THREE_DS_ENABLED: \"${EPAYCO_THREE_DS_ENABLED:-true}\"" >>"$env_file"
+  [[ -n "${EPAYCO_THREE_DS_AUTH_TYPE:-}" ]] && echo "EPAYCO_THREE_DS_AUTH_TYPE: \"${EPAYCO_THREE_DS_AUTH_TYPE}\"" >>"$env_file"
+  echo "MOCK_EPAYCO: \"${MOCK_EPAYCO:-false}\"" >>"$env_file"
 
   gcloud run deploy "${MEDUSA_SERVICE:-gorumin-medusa}" \
     --image "$img" \
@@ -208,8 +225,12 @@ case "$TARGET" in
 esac
 
 echo ""
-echo "==> Deploy complete."
-echo "    Sync content (fast):  ./infra/gcp/sync-prod.sh"
-echo "    Sync Fazer (full):    ./infra/gcp/sync-prod.sh --full"
+echo "==> Deploy complete (${ENVIRONMENT:-production})."
+echo "    Sync content (fast):  ENV_FILE=$ENV_FILE ./infra/gcp/sync-prod.sh"
+echo "    Sync Fazer (full):    ENV_FILE=$ENV_FILE ./infra/gcp/sync-prod.sh --full"
 echo "    Email assets:         ./infra/gcp/sync-email-assets.sh"
-echo "    Domain mapping:       ./infra/gcp/remap-domains.sh"
+if [[ "${ENVIRONMENT:-production}" == "sandbox" ]]; then
+  echo "    Domain mapping:       ./infra/gcp/remap-domains-sandbox.sh"
+else
+  echo "    Domain mapping:       ./infra/gcp/remap-domains.sh"
+fi
