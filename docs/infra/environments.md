@@ -162,17 +162,25 @@ Espera propagación DNS (5–60 min) y emisión de certificado SSL.
 ### B. Secrets y env file
 
 ```bash
-cp infra/gcp/env.sandbox.example infra/gcp/.env.sandbox
-# Editar: DB_PASSWORD, JWT_SECRET, COOKIE_SECRET, claves de pago sandbox, Brevo, etc.
+./infra/gcp/init-sandbox-env.sh          # genera .env.sandbox con secrets aleatorios
+# Tras bootstrap-sandbox, actualiza DB_PASSWORD con el valor que imprime el script
+# Editar manualmente: claves de pago que falten, Brevo, etc.
 ```
 
-Genera secrets fuertes:
+O manualmente:
 
 ```bash
-openssl rand -base64 32   # repetir para JWT, COOKIE, REVALIDATE_SECRET, etc.
+cp infra/gcp/env.sandbox.example infra/gcp/.env.sandbox
+openssl rand -base64 32   # JWT, COOKIE, REVALIDATE_SECRET, etc.
 ```
 
 ### C. Bootstrap + deploy
+
+Scripts de arranque Git (una vez):
+
+```bash
+./scripts/setup-git-branches.sh   # push main, crear develop, protecciones, environments
+```
 
 ```bash
 chmod +x infra/gcp/*.sh
@@ -266,6 +274,7 @@ infra/gcp/
   env.production.example # plantilla prod → .env.production
   bootstrap.sh           # SQL prod
   bootstrap-sandbox.sh   # SQL sandbox
+  init-sandbox-env.sh      # genera .env.sandbox
   deploy-prod.sh         # deploy (ENV_FILE configurable)
   deploy-sandbox.sh        # wrapper → .env.sandbox
   remap-domains.sh       # prod domains
