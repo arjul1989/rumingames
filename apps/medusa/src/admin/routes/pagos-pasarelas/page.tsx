@@ -8,6 +8,7 @@ import {
   toast,
   Select,
   Badge,
+  Input,
 } from "@medusajs/ui"
 import { useEffect, useState } from "react"
 import RoleGate from "../../components/role-gate"
@@ -17,18 +18,24 @@ type GatewayAvailability = {
   mock: boolean
 }
 
-type CountryGateway = {
+type GatewayFee = {
   country_code: string
-  active_gateway: "mercadopago" | "wompi"
-  available_gateways: Record<
-    "mercadopago" | "wompi",
-    GatewayAvailability
-  >
+  gateway: "mercadopago" | "wompi" | "epayco"
+  commission_pct: number
+  commission_fixed_local: number
 }
 
-const GATEWAY_LABELS: Record<"mercadopago" | "wompi", string> = {
+type CountryGateway = {
+  country_code: string
+  active_gateway: "mercadopago" | "wompi" | "epayco"
+  available_gateways: Record<"mercadopago" | "wompi" | "epayco", GatewayAvailability>
+  gateway_fees?: GatewayFee[]
+}
+
+const GATEWAY_LABELS: Record<"mercadopago" | "wompi" | "epayco", string> = {
   mercadopago: "Mercado Pago",
   wompi: "Wompi",
+  epayco: "ePayco",
 }
 
 const COUNTRY_LABELS: Record<string, string> = {
@@ -44,7 +51,11 @@ function availabilityLabel(gateway: GatewayAvailability): string {
 const PagosPasarelasPage = () => {
   const [countries, setCountries] = useState<CountryGateway[]>([])
   const [draft, setDraft] = useState<Record<string, CountryGateway["active_gateway"]>>({})
+  const [feeDrafts, setFeeDrafts] = useState<
+    Record<string, { commission_pct: number; commission_fixed_local: number }>
+  >({})
   const [saving, setSaving] = useState<string | null>(null)
+  const [savingFee, setSavingFee] = useState<string | null>(null)
 
   const load = async () => {
     const res = await fetch("/admin/payments/gateways", { credentials: "include" })
@@ -56,6 +67,17 @@ const PagosPasarelasPage = () => {
         data.countries.map((c) => [c.country_code, c.active_gateway])
       )
     )
+    const fees: Record<string, { commission_pct: number; commission_fixed_local: number }> =
+      {}
+    for (const country of data.countries) {
+      for (const fee of country.gateway_fees ?? []) {
+        fees[`${country.country_code}:${fee.gateway}`] = {
+          commission_pct: fee.commission_pct,
+          commission_fixed_local: fee.commission_fixed_local,
+        }
+      }
+    }
+    setFeeDrafts(fees)
   }
 
   useEffect(() => {
@@ -89,14 +111,48 @@ const PagosPasarelasPage = () => {
     }
   }
 
+  const saveFee = async (
+    countryCode: string,
+    gateway: "mercadopago" | "wompi" | "epayco"
+  ) => {
+    const key = `${countryCode}:${gateway}`
+    const fee = feeDrafts[key]
+    if (!fee) return
+
+    setSavingFee(key)
+    try {
+      const res = await fetch("/admin/pricing/gateway-fees", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          country_code: countryCode,
+          gateway,
+          commission_pct: fee.commission_pct,
+          commission_fixed_local: fee.commission_fixed_local,
+        }),
+      })
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { message?: string }
+        throw new Error(err.message ?? "No se pudo guardar la comisión")
+      }
+      toast.success(`Comisión ${GATEWAY_LABELS[gateway]} actualizada.`)
+      await load()
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setSavingFee(null)
+    }
+  }
+
   return (
     <RoleGate permission="supplier">
       <Container className="p-6">
         <div className="mb-8 flex flex-col gap-2">
           <Heading level="h1">Pagos — Pasarelas por país</Heading>
           <Text className="text-ui-fg-subtle">
-            Selecciona qué procesador de pagos usa cada país. El checkout del
-            storefront carga la pasarela activa (Mercado Pago o Wompi).
+            Selecciona la pasarela activa y configura la comisión por defecto que se muestra en
+            checkout (porcentaje + valor fijo en moneda local).
           </Text>
         </div>
 
@@ -145,7 +201,7 @@ const PagosPasarelasPage = () => {
                       <Select.Value />
                     </Select.Trigger>
                     <Select.Content>
-                      {(["mercadopago", "wompi"] as const).map((gateway) => {
+                      {(["mercadopago", "wompi", "epayco"] as const).map((gateway) => {
                         const availability = country.available_gateways[gateway]
                         const disabled =
                           !availability.configured && !availability.mock
@@ -164,17 +220,70 @@ const PagosPasarelasPage = () => {
                   </Select>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {(["mercadopago", "wompi"] as const).map((gateway) => {
-                    const availability = country.available_gateways[gateway]
+                <div className="flex flex-col gap-4 border-t pt-4">
+                  <Text size="small" weight="plus">
+                    Comisiones por pasarela
+                  </Text>
+                  {(["mercadopago", "wompi", "epayco"] as const).map((gateway) => {
+                    const key = `${country.country_code}:${gateway}`
+                    const fee = feeDrafts[key] ?? {
+                      commission_pct: gateway === "epayco" ? 2.5 : gateway === "wompi" ? 3 : 0,
+                      commission_fixed_local:
+                        gateway === "epayco" ? 600 : gateway === "wompi" ? 800 : 0,
+                    }
+
                     return (
-                      <Badge
+                      <div
                         key={gateway}
-                        color={availability.configured || availability.mock ? "green" : "grey"}
-                        size="small"
+                        className="grid grid-cols-1 gap-3 rounded-md border p-3 md:grid-cols-[1fr_1fr_auto]"
                       >
-                        {GATEWAY_LABELS[gateway]}: {availabilityLabel(availability)}
-                      </Badge>
+                        <div>
+                          <Text size="xsmall" className="text-ui-fg-subtle">
+                            {GATEWAY_LABELS[gateway]} — %
+                          </Text>
+                          <Input
+                            type="number"
+                            value={fee.commission_pct}
+                            onChange={(e) =>
+                              setFeeDrafts((prev) => ({
+                                ...prev,
+                                [key]: {
+                                  ...fee,
+                                  commission_pct: Number(e.target.value),
+                                },
+                              }))
+                            }
+                          />
+                        </div>
+                        <div>
+                          <Text size="xsmall" className="text-ui-fg-subtle">
+                            Fijo (COP)
+                          </Text>
+                          <Input
+                            type="number"
+                            value={fee.commission_fixed_local}
+                            onChange={(e) =>
+                              setFeeDrafts((prev) => ({
+                                ...prev,
+                                [key]: {
+                                  ...fee,
+                                  commission_fixed_local: Number(e.target.value),
+                                },
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="flex items-end">
+                          <Button
+                            size="small"
+                            variant="secondary"
+                            onClick={() => saveFee(country.country_code, gateway)}
+                            isLoading={savingFee === key}
+                          >
+                            Guardar
+                          </Button>
+                        </div>
+                      </div>
                     )
                   })}
                 </div>
@@ -184,7 +293,7 @@ const PagosPasarelasPage = () => {
                   isLoading={saving === country.country_code}
                   disabled={!canSave}
                 >
-                  Guardar {COUNTRY_LABELS[country.country_code] ?? country.country_code}
+                  Guardar pasarela activa
                 </Button>
               </div>
             )

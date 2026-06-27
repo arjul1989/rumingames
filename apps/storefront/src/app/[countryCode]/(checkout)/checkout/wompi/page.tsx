@@ -1,5 +1,6 @@
 import { checkoutLabels } from "@lib/i18n/es-co"
 import { retrieveCart } from "@lib/data/cart"
+import { retrieveCartPricingBreakdown } from "@lib/data/pricing"
 import { retrieveCustomer } from "@lib/data/customer"
 import CheckoutSummary from "@modules/checkout/templates/checkout-summary"
 import WompiCheckoutForm from "@modules/checkout/templates/wompi-checkout-form"
@@ -26,6 +27,9 @@ export default async function WompiCheckoutPage({ params }: Props) {
   }
 
   const customer = await retrieveCustomer()
+  const pricingBreakdown = cart.id
+    ? await retrieveCartPricingBreakdown(cart.id, countryCode)
+    : null
 
   return (
     <div className="grid grid-cols-1 small:grid-cols-[1fr_416px] content-container gap-x-12 gap-y-8 py-12">
@@ -37,7 +41,7 @@ export default async function WompiCheckoutPage({ params }: Props) {
         />
       </div>
       <div className="hyper-glass h-fit rounded-2xl p-6 md:sticky md:top-24">
-        <CheckoutSummary cart={cart} />
+        <CheckoutSummary cart={cart} pricingBreakdown={pricingBreakdown} />
       </div>
     </div>
   )

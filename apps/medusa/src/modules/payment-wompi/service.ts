@@ -243,6 +243,7 @@ class WompiProviderService extends AbstractPaymentProvider<WompiOptions> {
     data: Record<string, unknown>,
     tx: WompiTransaction
   ): Record<string, unknown> {
+    const threeDs = tx.payment_method?.extra?.three_ds_auth
     return {
       ...data,
       wompi_transaction_id: tx.id,
@@ -251,6 +252,9 @@ class WompiProviderService extends AbstractPaymentProvider<WompiOptions> {
       wompi_payment_method_type: tx.payment_method_type ?? null,
       wompi_status_message: tx.status_message ?? null,
       wompi_redirect_url: tx.redirect_url ?? null,
+      wompi_three_ds_auth: threeDs ?? null,
+      wompi_three_ds_step: threeDs?.current_step ?? null,
+      wompi_three_ds_step_status: threeDs?.current_step_status ?? null,
     }
   }
 }

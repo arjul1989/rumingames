@@ -12,6 +12,7 @@ const IS_PROD = process.env.NODE_ENV === 'production'
 const MOCK_MP = !IS_PROD && process.env.MOCK_MP === 'true'
 const MOCK_FAZER = !IS_PROD && process.env.MOCK_FAZER === 'true'
 const MOCK_WOMPI = !IS_PROD && process.env.MOCK_WOMPI === 'true'
+const MOCK_EPAYCO = !IS_PROD && process.env.MOCK_EPAYCO === 'true'
 
 // Fazer Cards module is registered when an API key is configured (or mock mode in dev).
 const fazerModules = process.env.FAZER_API_KEY || MOCK_FAZER
@@ -59,6 +60,25 @@ if (process.env.WOMPI_PRIVATE_KEY || MOCK_WOMPI) {
         (process.env.STOREFRONT_URL
           ? `${process.env.STOREFRONT_URL.replace(/\/$/, "")}/co/checkout/pending`
           : undefined),
+    },
+  })
+}
+
+if (process.env.EPAYCO_PRIVATE_KEY || MOCK_EPAYCO) {
+  paymentProviders.push({
+    resolve: './src/modules/payment-epayco',
+    id: 'epayco',
+    options: {
+      publicKey: process.env.EPAYCO_PUBLIC_KEY || 'pub_mock_epayco',
+      privateKey: process.env.EPAYCO_PRIVATE_KEY || 'prv_mock_epayco',
+      testMode: process.env.EPAYCO_TEST_MODE !== 'false',
+      confirmationSecret: process.env.EPAYCO_CONFIRMATION_SECRET,
+      redirectUrl:
+        process.env.EPAYCO_REDIRECT_URL ||
+        (process.env.STOREFRONT_URL
+          ? `${process.env.STOREFRONT_URL.replace(/\/$/, "")}/co/checkout/pending`
+          : undefined),
+      confirmationUrl: process.env.EPAYCO_NOTIFICATION_URL,
     },
   })
 }

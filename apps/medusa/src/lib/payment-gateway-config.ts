@@ -8,6 +8,9 @@ import type {
 import { PAYMENT_GATEWAYS } from "./payment-gateway-types"
 import { SUPPLIER_MODULE } from "../modules/supplier"
 import type SupplierModuleService from "../modules/supplier/service"
+import {
+  listPaymentGatewayFeesForCountry,
+} from "./country-pricing-config"
 import { syncRegionPaymentProviders } from "./sync-region-payment-providers"
 
 const DEFAULT_COUNTRY = "co"
@@ -29,6 +32,13 @@ function gatewayAvailability(
           process.env.WOMPI_PRIVATE_KEY && process.env.WOMPI_PUBLIC_KEY
         ),
         mock: !isProd && process.env.MOCK_WOMPI === "true",
+      }
+    case "epayco":
+      return {
+        configured: Boolean(
+          process.env.EPAYCO_PRIVATE_KEY && process.env.EPAYCO_PUBLIC_KEY
+        ),
+        mock: !isProd && process.env.MOCK_EPAYCO === "true",
       }
     default:
       return { configured: false, mock: false }
@@ -87,6 +97,7 @@ export async function getCountryPaymentGatewayAdmin(
   return {
     ...config,
     available_gateways,
+    gateway_fees: await listPaymentGatewayFeesForCountry(container, countryCode),
   }
 }
 

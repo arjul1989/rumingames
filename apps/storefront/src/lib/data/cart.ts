@@ -689,6 +689,107 @@ export async function payWithWompi(
   )
 }
 
+const EPAYCO_PROVIDER_ID = "pp_epayco_epayco"
+
+const EPAYCO_APPROVED_STATUSES = [
+  "captured",
+  "authorized",
+  "partially_captured",
+  "partially_authorized",
+]
+
+/**
+ * Completes a cart paid with ePayco after card charge + 3DS validation.
+ */
+export async function payWithEpayco(
+  countryCode: string,
+  paymentData: Record<string, unknown>
+) {
+  const cart = await retrieveCart(
+    undefined,
+    "*payment_collection, *payment_collection.payment_sessions, *region, *shipping_address, email, metadata"
+  )
+
+  if (!cart) {
+    return { error: "No encontramos tu carrito." }
+  }
+
+  const pendingSession = cart.payment_collection?.payment_sessions?.find(
+    (s) => s.status === "pending" && s.provider_id === EPAYCO_PROVIDER_ID
+  )
+
+  const ip_address = await getClientIpAddress()
+
+  await initiatePaymentSession(cart, {
+    provider_id: EPAYCO_PROVIDER_ID,
+    data: {
+      ...(pendingSession?.data as Record<string, unknown> | undefined),
+      ...paymentData,
+      epayco_ref_payco: paymentData.ref_payco,
+      session_id: paymentData.session_id ?? pendingSession?.id,
+      amount: cart.total,
+      ip_address,
+      payer_email: cart.email,
+    },
+  } as HttpTypes.StoreInitializePaymentSession)
+
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  let order: HttpTypes.StoreOrder | undefined
+  let failureReason = ""
+
+  try {
+    const res = await sdk.store.cart.complete(cart.id, {}, headers)
+    if (res?.type === "order") {
+      order = res.order
+    }
+  } catch (e) {
+    failureReason = e instanceof Error ? e.message : "El pago fue rechazado."
+    try {
+      const refreshed = await retrieveCart(
+        cart.id,
+        "*payment_collection, *payment_collection.payment_sessions"
+      )
+      const session = refreshed?.payment_collection?.payment_sessions?.find(
+        (s) =>
+          s.id === pendingSession?.id ||
+          s.status === "error" ||
+          s.status === "pending"
+      )
+      const epaycoError = (session?.data as Record<string, unknown> | undefined)
+        ?.epayco_error
+      if (typeof epaycoError === "string" && epaycoError.trim()) {
+        failureReason = epaycoError
+      }
+    } catch {
+      // Keep generic failure reason.
+    }
+  }
+
+  if (order) {
+    const cc =
+      order.shipping_address?.country_code?.toLowerCase() || countryCode
+
+    revalidateTag(await getCacheTag("carts"))
+    revalidateTag(await getCacheTag("orders"))
+    removeCartId()
+
+    const approved = EPAYCO_APPROVED_STATUSES.includes(
+      order.payment_status as string
+    )
+    const target = approved ? "success" : "pending"
+    redirect(`/${cc}/checkout/${target}?order=${order.id}`)
+  }
+
+  redirect(
+    `/${countryCode}/checkout/failure?reason=${encodeURIComponent(
+      failureReason || "No se pudo procesar el pago."
+    )}`
+  )
+}
+
 /**
  * Updates the countrycode param and revalidates the regions cache
  * @param regionId

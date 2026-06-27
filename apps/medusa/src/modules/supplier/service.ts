@@ -6,6 +6,8 @@ import FazerOffer from "./models/fazer-offer"
 import FazerConfig from "./models/fazer-config"
 import MpPaymentConfig from "./models/mp-payment-config"
 import CountryPaymentGateway from "./models/country-payment-gateway"
+import CountryPricingConfig from "./models/country-pricing-config"
+import PaymentGatewayFee from "./models/payment-gateway-fee"
 import SupportTrace from "./models/support-trace"
 import FazerWalletTopup from "./models/fazer-wallet-topup"
 
@@ -17,6 +19,8 @@ class SupplierModuleService extends MedusaService({
   FazerConfig,
   MpPaymentConfig,
   CountryPaymentGateway,
+  CountryPricingConfig,
+  PaymentGatewayFee,
   SupportTrace,
   FazerWalletTopup,
 }) {}

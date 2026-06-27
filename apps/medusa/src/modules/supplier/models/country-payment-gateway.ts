@@ -5,7 +5,7 @@ const CountryPaymentGateway = model.define("country_payment_gateway", {
   id: model.id().primaryKey(),
   country_code: model.text(),
   active_gateway: model
-    .enum(["mercadopago", "wompi"])
+    .enum(["mercadopago", "wompi", "epayco"])
     .default("mercadopago"),
 })
 

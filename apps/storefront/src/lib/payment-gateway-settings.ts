@@ -16,6 +16,7 @@ const DEFAULT_GATEWAY: StorePaymentGatewaySettings = {
   available_gateways: {
     mercadopago: { configured: true, mock: false },
     wompi: { configured: false, mock: false },
+    epayco: { configured: false, mock: false },
   },
 }
 

@@ -41,10 +41,13 @@ export default defineMiddlewares({
     { matcher: "/admin/fazer/payment-methods", middlewares: [fazer] },
     { matcher: "/admin/fazer/wallet-topup", middlewares: [fazer] },
     { matcher: "/admin/fazer/wallet-topup/*", middlewares: [fazer] },
+    { matcher: "/admin/pricing/country", middlewares: [fazer] },
+    { matcher: "/admin/pricing/gateway-fees", middlewares: [supplier] },
     { matcher: "/admin/support/timeline", middlewares: [support] },
     { matcher: "/admin/supplier/mappings", middlewares: [supplier] },
     { matcher: "/admin/supplier/mappings/*", middlewares: [supplier] },
     { matcher: "/admin/payments/mercadopago", middlewares: [supplier] },
+    { matcher: "/admin/payments/gateways", middlewares: [supplier] },
     {
       matcher: "/admin/orders/*/refund-mp",
       method: ["POST"],

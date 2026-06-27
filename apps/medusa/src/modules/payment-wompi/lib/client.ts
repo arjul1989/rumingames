@@ -1,4 +1,9 @@
-import type { WompiApiEnvelope, WompiTransaction } from "./types"
+import type {
+  WompiApiEnvelope,
+  WompiCardToken,
+  WompiMerchant,
+  WompiTransaction,
+} from "./types"
 
 const DEFAULT_BASE_URL = "https://sandbox.wompi.co/v1"
 const DEFAULT_TIMEOUT_MS = 20_000
@@ -37,6 +42,38 @@ export class WompiClient {
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "")
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch
+  }
+
+  getMerchant(): Promise<WompiMerchant> {
+    return this.request<WompiApiEnvelope<WompiMerchant>>(
+      "GET",
+      `/merchants/${this.publicKey}`,
+      this.publicKey
+    ).then((res) => res.data)
+  }
+
+  tokenizeCard(input: {
+    number: string
+    cvc: string
+    exp_month: string
+    exp_year: string
+    card_holder: string
+  }): Promise<WompiCardToken> {
+    return this.request<{ data: WompiCardToken }>(
+      "POST",
+      "/tokens/cards",
+      this.publicKey,
+      input
+    ).then((res) => res.data)
+  }
+
+  createTransaction(body: Record<string, unknown>): Promise<WompiTransaction> {
+    return this.request<WompiApiEnvelope<WompiTransaction>>(
+      "POST",
+      "/transactions",
+      this.privateKey,
+      body
+    ).then((res) => res.data)
   }
 
   getTransaction(id: string): Promise<WompiTransaction> {

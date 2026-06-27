@@ -15,6 +15,10 @@ export function isMockWompiEnabled(): boolean {
   return isDevMocksAllowed() && process.env.MOCK_WOMPI === "true"
 }
 
+export function isMockEpaycoEnabled(): boolean {
+  return isDevMocksAllowed() && process.env.MOCK_EPAYCO === "true"
+}
+
 export function mockMpBackendBase(): string {
   return (process.env.MEDUSA_BACKEND_URL ?? "http://localhost:9000").replace(/\/$/, "")
 }

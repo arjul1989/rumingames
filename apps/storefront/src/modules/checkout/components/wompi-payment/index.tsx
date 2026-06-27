@@ -1,7 +1,10 @@
 "use client"
 
 import { initiatePaymentSession, payWithWompi } from "@lib/data/cart"
-import { fetchWompiCheckoutParams } from "@lib/wompi-settings"
+import {
+  fetchWompiCheckoutParams,
+  getWompiSettings,
+} from "@lib/wompi-settings"
 import { checkoutLabels } from "@lib/i18n/es-co"
 import { Button } from "@modules/common/components/ui"
 import { HttpTypes } from "@medusajs/types"
@@ -9,6 +12,7 @@ import { isRedirectError } from "next/dist/client/components/redirect-error"
 import Script from "next/script"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import ErrorMessage from "../error-message"
+import WompiCardPayment from "../wompi-card-payment"
 
 const WOMPI_PROVIDER_ID = "pp_wompi_wompi"
 const WOMPI_WIDGET_SRC = "https://checkout.wompi.co/widget.js"
@@ -52,6 +56,8 @@ const WompiPayment = ({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sessionReady, setSessionReady] = useState(false)
+  const [threeDsEnabled, setThreeDsEnabled] = useState<boolean | null>(null)
+  const [showWidget, setShowWidget] = useState(false)
 
   const session = cart.payment_collection?.payment_sessions?.find(
     (s) => s.status === "pending" && s.provider_id === WOMPI_PROVIDER_ID
@@ -72,6 +78,11 @@ const WompiPayment = ({
     let cancelled = false
     ;(async () => {
       try {
+        const settings = await getWompiSettings()
+        if (!cancelled) {
+          setThreeDsEnabled(settings.three_ds_enabled !== false)
+        }
+
         if (session?.id) {
           if (!cancelled) {
             setSessionId(session.id)
@@ -102,7 +113,7 @@ const WompiPayment = ({
     }
   }, [cart, session])
 
-  const handlePay = useCallback(async () => {
+  const handleWidgetPay = useCallback(async () => {
     if (!window.WidgetCheckout) {
       setError("El widget de Wompi no está disponible.")
       return
@@ -194,6 +205,53 @@ const WompiPayment = ({
     )
   }
 
+  if (threeDsEnabled === null) {
+    return (
+      <p className="text-sm text-on-surface-variant">Preparando pago con Wompi…</p>
+    )
+  }
+
+  if (threeDsEnabled) {
+    return (
+      <div data-testid={dataTestId} className="flex flex-col gap-6">
+        <WompiCardPayment cart={cart} countryCode={countryCode} />
+
+        <div className="border-t border-white/10 pt-4">
+          <button
+            type="button"
+            className="text-sm text-on-surface-variant underline underline-offset-2 hover:text-on-surface"
+            onClick={() => setShowWidget((v) => !v)}
+          >
+            {showWidget
+              ? "Ocultar otros métodos de pago"
+              : "Pagar con PSE, Nequi u otros métodos"}
+          </button>
+
+          {showWidget && (
+            <div className="mt-4 flex flex-col gap-3">
+              <Script
+                src={WOMPI_WIDGET_SRC}
+                strategy="lazyOnload"
+                onLoad={() => setScriptReady(true)}
+              />
+              <Button
+                size="large"
+                variant="secondary"
+                className="w-full"
+                onClick={handleWidgetPay}
+                isLoading={submitting}
+                disabled={!scriptReady || !sessionReady || submitting}
+              >
+                {checkoutLabels.placeOrder} con widget Wompi
+              </Button>
+              <ErrorMessage error={error} data-testid="wompi-payment-error" />
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div data-testid={dataTestId}>
       <Script
@@ -204,7 +262,7 @@ const WompiPayment = ({
       <Button
         size="large"
         className="checkout-cta w-full"
-        onClick={handlePay}
+        onClick={handleWidgetPay}
         isLoading={submitting}
         disabled={!scriptReady || !sessionReady || submitting}
       >
