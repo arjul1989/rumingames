@@ -1,9 +1,11 @@
 import { Metadata } from "next"
 
 import { listProducts } from "@lib/data/products"
+import { filterStorefrontProducts } from "@lib/storefront-catalog"
 import { listCategories } from "@lib/data/categories"
 import { localizedAlternates } from "@lib/seo"
 import StoreTemplate from "@modules/gorumin/templates/store"
+export const revalidate = 30
 
 export const metadata: Metadata = {
   title: "Tienda",
@@ -22,7 +24,7 @@ export default async function StorePage(props: Params) {
   const [productsResult, categories] = await Promise.all([
     listProducts({
       countryCode,
-      queryParams: { limit: 24 },
+      queryParams: { limit: 100 },
     }).catch(() => ({ response: { products: [], count: 0 } })),
     listCategories().catch(() => []),
   ])
@@ -34,7 +36,7 @@ export default async function StorePage(props: Params) {
 
   return (
     <StoreTemplate
-      products={productsResult.response.products}
+      products={filterStorefrontProducts(productsResult.response.products)}
       categories={platformCategories}
     />
   )

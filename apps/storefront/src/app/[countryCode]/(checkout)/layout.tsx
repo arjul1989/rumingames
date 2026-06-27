@@ -33,7 +33,7 @@ export default function CheckoutLayout({
             className="font-display text-xl font-extrabold tracking-tighter text-primary drop-shadow-[0_0_15px_rgba(221,183,255,0.6)]"
             data-testid="store-link"
           >
-            GORUMIN
+            RUMIN
           </LocalizedClientLink>
           <div className="flex items-center gap-2 font-mono text-label-caps tracking-widest text-on-surface-variant/50">
             <span className="material-symbols-outlined text-base text-secondary">

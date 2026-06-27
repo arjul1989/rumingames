@@ -7,7 +7,8 @@ import { ACTIVE_COUNTRY_CODES, DEFAULT_COUNTRY as DEFAULT_CC } from "@lib/countr
 // (US-6.3 / RUM-43) so hreflang and the sitemap grow as new markets go live.
 export const ACTIVE_COUNTRIES = ACTIVE_COUNTRY_CODES
 export const DEFAULT_COUNTRY = DEFAULT_CC
-export const SITE_NAME = "Gorumin"
+export const SITE_NAME = "rumin"
+export const SITE_DOMAIN = "gorumin.com"
 export const OG_LOCALE = "es_CO"
 
 export function absoluteUrl(path = ""): string {

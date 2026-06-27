@@ -34,7 +34,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 
   const title = article.seo_title ?? article.title
   const description =
-    article.seo_description ?? article.excerpt ?? `${article.title} — Gorumin`
+    article.seo_description ?? article.excerpt ?? `${article.title} — ${SITE_NAME}`
   const ogImage = article.og_image ?? article.cover_image
   return {
     title,

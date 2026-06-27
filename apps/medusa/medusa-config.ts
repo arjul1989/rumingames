@@ -1,19 +1,24 @@
-import { loadEnv, defineConfig, Modules } from '@medusajs/framework/utils'
+import {
+  loadEnv,
+  defineConfig,
+  Modules,
+  ContainerRegistrationKeys,
+} from '@medusajs/framework/utils'
 
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
 
 const REDIS_URL = process.env.REDIS_URL
+const IS_PROD = process.env.NODE_ENV === 'production'
+const MOCK_MP = !IS_PROD && process.env.MOCK_MP === 'true'
+const MOCK_FAZER = !IS_PROD && process.env.MOCK_FAZER === 'true'
 
-// Fazer Cards module is registered only when an API key is configured, so the
-// app still boots locally without supplier credentials (US-2.1 / RUM-16).
-const fazerModules = process.env.FAZER_API_KEY
+// Fazer Cards module is registered when an API key is configured (or mock mode in dev).
+const fazerModules = process.env.FAZER_API_KEY || MOCK_FAZER
   ? [{ resolve: './src/modules/fazer' }]
   : []
 
-// Mercado Pago payment provider is registered only when an access token is
-// configured (US-3.1 / RUM-23). Without it, Medusa keeps the system default
-// provider so checkout still works locally.
-const paymentModules = process.env.MP_ACCESS_TOKEN
+// Mercado Pago provider when access token is set, or MOCK_MP in local dev.
+const paymentModules = process.env.MP_ACCESS_TOKEN || MOCK_MP
   ? [
       {
         resolve: '@medusajs/medusa/payment',
@@ -23,11 +28,16 @@ const paymentModules = process.env.MP_ACCESS_TOKEN
               resolve: './src/modules/payment-mercadopago',
               id: 'mercadopago',
               options: {
-                accessToken: process.env.MP_ACCESS_TOKEN,
+                accessToken: process.env.MP_ACCESS_TOKEN || 'mock-mp-local',
                 publicKey: process.env.MP_PUBLIC_KEY,
                 webhookSecret: process.env.MP_WEBHOOK_SECRET,
                 locale: process.env.MP_LOCALE || 'es-CO',
                 notificationUrl: process.env.MP_NOTIFICATION_URL,
+                callbackUrl:
+                  process.env.MP_CALLBACK_URL ||
+                  (process.env.STOREFRONT_URL
+                    ? `${process.env.STOREFRONT_URL.replace(/\/$/, "")}/co/checkout/pending`
+                    : undefined),
                 statementDescriptor: process.env.MP_STATEMENT_DESCRIPTOR || 'GORUMIN',
               },
             },
@@ -71,6 +81,77 @@ const redisModules = REDIS_URL
     ]
   : []
 
+// Google OAuth (RUM-69 / US-1.6). Registered only when credentials are set so
+// local dev without Google Cloud still boots with default emailpass auth.
+const googleOAuthConfigured =
+  process.env.GOOGLE_CLIENT_ID &&
+  process.env.GOOGLE_CLIENT_SECRET &&
+  process.env.GOOGLE_CALLBACK_URL
+
+const authModules = googleOAuthConfigured
+  ? [
+      {
+        resolve: '@medusajs/medusa/auth',
+        dependencies: [Modules.CACHE, ContainerRegistrationKeys.LOGGER],
+        options: {
+          providers: [
+            {
+              resolve: '@medusajs/medusa/auth-emailpass',
+              id: 'emailpass',
+            },
+            {
+              resolve: '@medusajs/medusa/auth-google',
+              id: 'google',
+              options: {
+                clientId: process.env.GOOGLE_CLIENT_ID,
+                clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+                callbackUrl: process.env.GOOGLE_CALLBACK_URL,
+              },
+            },
+          ],
+        },
+      },
+    ]
+  : []
+
+// Brevo transactional email (production). Falls back to console logging locally.
+const brevoConfigured = Boolean(process.env.BREVO_API_KEY && process.env.BREVO_FROM_EMAIL)
+
+const notificationModules = [
+  {
+    resolve: '@medusajs/medusa/notification',
+    options: {
+      providers: [
+        brevoConfigured
+          ? {
+              resolve: './src/modules/notification-brevo',
+              id: 'brevo',
+              options: {
+                channels: ['email'],
+                apiKey: process.env.BREVO_API_KEY,
+                from: process.env.BREVO_FROM_EMAIL,
+                senderName: process.env.BREVO_SENDER_NAME || 'rumin',
+                replyTo: process.env.BREVO_REPLY_TO || process.env.ADMIN_ALERT_EMAIL,
+                templateIds: {
+                  'order-placed': process.env.BREVO_TEMPLATE_ORDER_PLACED,
+                  'email-verification': process.env.BREVO_TEMPLATE_EMAIL_VERIFICATION,
+                  'digital-code-delivered': process.env.BREVO_TEMPLATE_DIGITAL_CODE,
+                },
+              },
+            }
+          : {
+              resolve: '@medusajs/medusa/notification-local',
+              id: 'local',
+              options: {
+                name: 'Local Notification Provider',
+                channels: ['email'],
+              },
+            },
+      ],
+    },
+  },
+]
+
 module.exports = defineConfig({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
@@ -92,26 +173,14 @@ module.exports = defineConfig({
       resolve: './src/modules/digital-delivery',
     },
     {
+      resolve: './src/modules/funding',
+    },
+    {
       resolve: './src/modules/cms',
     },
     ...fazerModules,
+    ...authModules,
     ...paymentModules,
-    {
-      // Local provider logs emails to the console in dev.
-      // Swap for @medusajs/medusa/notification-sendgrid in production.
-      resolve: '@medusajs/medusa/notification',
-      options: {
-        providers: [
-          {
-            resolve: '@medusajs/medusa/notification-local',
-            id: 'local',
-            options: {
-              name: 'Local Notification Provider',
-              channels: ['email'],
-            },
-          },
-        ],
-      },
-    },
+    ...notificationModules,
   ],
 })

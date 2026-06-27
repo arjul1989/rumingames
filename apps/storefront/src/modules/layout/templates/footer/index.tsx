@@ -1,4 +1,5 @@
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import { SITE_DOMAIN, SITE_NAME } from "@lib/seo"
 
 // Gorumin global footer (US-7.1 / RUM-37). Community + store + legal links and
 // the active country (Colombia in the MVP).
@@ -38,7 +39,7 @@ export default async function Footer() {
               href="/"
               className="font-display text-3xl font-extrabold text-primary drop-shadow-[0_0_15px_rgba(221,183,255,0.5)]"
             >
-              GORUMIN
+              RUMIN
             </LocalizedClientLink>
             <p className="max-w-xs text-sm text-on-surface-variant/70">
               Gift cards y recargas de videojuegos para la comunidad gamer de
@@ -74,8 +75,14 @@ export default async function Footer() {
 
         <div className="mt-12 border-t border-white/5 pt-6">
           <p className="font-mono text-xs text-on-surface-variant/40">
-            © {new Date().getFullYear()} Gorumin — rumingames. Todos los
-            derechos reservados.
+            © {new Date().getFullYear()} {SITE_NAME} ·{" "}
+            <a
+              href={`https://${SITE_DOMAIN}`}
+              className="text-on-surface-variant/60 hover:text-secondary"
+            >
+              {SITE_DOMAIN}
+            </a>
+            . Todos los derechos reservados.
           </p>
         </div>
       </div>

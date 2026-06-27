@@ -76,6 +76,7 @@ export default async function cms_seed({
 
   const now = new Date()
   const daysAgo = (n: number) => new Date(now.getTime() - n * 86400000)
+  const storefront = (process.env.STOREFRONT_URL ?? "http://localhost:8000").replace(/\/$/, "")
 
   await cms.createArticles([
     {
@@ -84,7 +85,7 @@ export default async function cms_seed({
       excerpt:
         "Aprovecha la temporada de rebajas: te contamos cómo recargar tu billetera de Steam al mejor precio en Colombia.",
       body: "La temporada de ofertas ya llegó y es el momento perfecto para llenar tu biblioteca.\n\nCon una gift card de Steam puedes comprar los juegos que tienes en tu lista de deseos, DLCs y contenido adicional. La entrega es digital e inmediata: recibes tu código por correo y lo canjeas en segundos.\n\nEn Gorumin tienes denominaciones desde 20.000 COP, ideales para cualquier presupuesto.",
-      cover_image: "https://picsum.photos/seed/steam/1200/675",
+      cover_image: `${storefront}/articles/steam-gift-cards.jpg`,
       author: "Equipo Gorumin",
       status: "published",
       published_at: daysAgo(1),
@@ -98,7 +99,7 @@ export default async function cms_seed({
       excerpt:
         "Todo lo que necesitas saber para recargar diamantes con tu ID de jugador sin riesgos.",
       body: "Recargar diamantes en Free Fire es muy sencillo cuando lo haces desde una tienda confiable.\n\nSolo necesitas tu ID de jugador, que encuentras en tu perfil dentro del juego. Lo ingresas al momento de comprar y los diamantes se acreditan directamente en tu cuenta.\n\nNunca compartas tu contraseña: para una recarga legítima solo se necesita tu ID.",
-      cover_image: "https://picsum.photos/seed/freefire/1200/675",
+      cover_image: `${storefront}/articles/free-fire-diamantes.jpg`,
       author: "LunaPlay",
       status: "published",
       published_at: daysAgo(3),
@@ -113,7 +114,7 @@ export default async function cms_seed({
       excerpt:
         "Resumen de la final más vista del año y lo que significa para la escena competitiva latinoamericana.",
       body: "La gran final de Valorant Champions nos regaló uno de los mejores partidos de la temporada.\n\nEl nivel de juego, las jugadas clutch y el ambiente marcaron un antes y un después para la región. La escena latinoamericana sigue creciendo y promete mucho para el próximo año.",
-      cover_image: "https://picsum.photos/seed/valorant/1200/675",
+      cover_image: `${storefront}/articles/valorant-champions.jpg`,
       author: "Equipo Gorumin",
       status: "published",
       published_at: daysAgo(5),

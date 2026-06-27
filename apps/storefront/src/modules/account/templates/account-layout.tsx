@@ -19,7 +19,7 @@ const AccountLayout: React.FC<AccountLayoutProps> = ({
       <div className="content-container mx-auto flex h-full max-w-5xl flex-col">
         <div className="grid grid-cols-1 gap-8 py-4 small:grid-cols-[240px_1fr]">
           <div>{customer && <AccountNav customer={customer} />}</div>
-          <div className="flex-1">{children}</div>
+          <div className="min-w-0 flex-1">{children}</div>
         </div>
         <div className="mt-12 flex flex-col items-start justify-between gap-8 border-t border-white/10 py-12 small:flex-row small:items-end">
           <div>
@@ -32,7 +32,7 @@ const AccountLayout: React.FC<AccountLayoutProps> = ({
             </span>
           </div>
           <div>
-            <UnderlineLink href="/customer-service">
+            <UnderlineLink href="/contacto">
               Atención al cliente
             </UnderlineLink>
           </div>

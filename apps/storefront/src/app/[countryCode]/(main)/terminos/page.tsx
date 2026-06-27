@@ -4,7 +4,7 @@ import { localizedAlternates, SITE_NAME } from "@lib/seo"
 export const metadata: Metadata = {
   title: "Términos y Condiciones",
   description:
-    "Términos y condiciones de uso de Gorumin para la compra de gift cards y recargas de videojuegos en Colombia.",
+    "Términos y condiciones de uso de rumin para la compra de gift cards y recargas de videojuegos en Colombia.",
   alternates: localizedAlternates("terminos"),
 }
 

@@ -1,6 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { getAuthActorId } from "../../../../../lib/auth-context"
+import { getCustomerVerificationStatus } from "../../../../../lib/require-verified-email"
 import { DIGITAL_DELIVERY_MODULE } from "../../../../../modules/digital-delivery"
 import type DigitalDeliveryModuleService from "../../../../../modules/digital-delivery/service"
 
@@ -12,6 +13,14 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
   if (!customerId) {
     return res.status(401).json({ message: "No autenticado." })
+  }
+
+  const { verified } = await getCustomerVerificationStatus(req.scope, customerId)
+  if (!verified) {
+    return res.status(403).json({
+      message: "Confirma tu correo electrónico para ver tus códigos digitales.",
+      code: "email_not_verified",
+    })
   }
 
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)

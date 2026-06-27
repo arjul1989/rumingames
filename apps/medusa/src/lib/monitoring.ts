@@ -1,5 +1,5 @@
 import type { MedusaContainer } from "@medusajs/framework"
-import { Modules } from "@medusajs/framework/utils"
+import { sendEmail } from "./email/send-email"
 
 // Structured monitoring events for Cloud Logging + operator alerts (US-10.3 / RUM-67).
 // On Cloud Run, JSON logs on stdout are ingested automatically by Cloud Logging.
@@ -7,6 +7,7 @@ import { Modules } from "@medusajs/framework/utils"
 
 export type MonitorEventType =
   | "fulfillment.failed"
+  | "funding.failed"
   | "payment.webhook.error"
   | "fazer.balance.low"
   | "health.check.failed"
@@ -24,6 +25,7 @@ export interface MonitorEvent {
 
 const ALERT_EMAIL_TYPES: MonitorEventType[] = [
   "fulfillment.failed",
+  "funding.failed",
   "payment.webhook.error",
   "fazer.balance.low",
   "health.check.failed",
@@ -52,16 +54,14 @@ export async function emitMonitorAlert(
   if (!to) return
 
   try {
-    const notification = container.resolve(Modules.NOTIFICATION)
-    await notification.createNotifications({
+    await sendEmail(container, {
       to,
-      channel: "email",
       template: "monitor-alert",
-      content: {
-        subject: `[Gorumin][${event.severity}] ${event.event_type}`,
-        text: `${event.message}\n\nContexto: ${JSON.stringify(event.context ?? {})}`,
-      } as unknown as Record<string, unknown>,
-      data: { event_type: event.event_type, severity: event.severity, ...event.context },
+      data: {
+        subject: `[rumin][${event.severity}] ${event.event_type}`,
+        message: event.message,
+        details: JSON.stringify(event.context ?? {}, null, 2),
+      },
     })
   } catch {
     // Alert delivery must not break the main flow.

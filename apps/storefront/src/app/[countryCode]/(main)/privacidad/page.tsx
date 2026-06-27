@@ -4,7 +4,7 @@ import { localizedAlternates, SITE_NAME } from "@lib/seo"
 export const metadata: Metadata = {
   title: "Política de Privacidad",
   description:
-    "Política de tratamiento de datos personales de Gorumin conforme a la Ley 1581 de 2012 (habeas data) de Colombia.",
+    "Política de tratamiento de datos personales de rumin conforme a la Ley 1581 de 2012 (habeas data) de Colombia.",
   alternates: localizedAlternates("privacidad"),
 }
 

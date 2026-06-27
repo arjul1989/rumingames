@@ -5,6 +5,10 @@ import os
 import subprocess
 import sys
 
+from jira_env import load_jira_env
+
+load_jira_env()
+
 BASE = "https://rumin.atlassian.net/rest/api/3"
 EMAIL = os.environ.get("JIRA_EMAIL", "arjul1989@gmail.com")
 TOKEN = os.environ.get("JIRA_API_TOKEN")

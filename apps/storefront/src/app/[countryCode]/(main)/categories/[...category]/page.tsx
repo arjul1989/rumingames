@@ -3,7 +3,7 @@ import { notFound } from "next/navigation"
 
 import { getCategoryByHandle, listCategories } from "@lib/data/categories"
 import { listRegions } from "@lib/data/regions"
-import { localizedAlternates } from "@lib/seo"
+import { localizedAlternates, SITE_NAME } from "@lib/seo"
 import { HttpTypes, StoreRegion } from "@medusajs/types"
 import CategoryTemplate from "@modules/categories/templates"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
@@ -52,7 +52,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 
     const description =
       productCategory.description ??
-      `Gift cards, recargas y suscripciones de ${productCategory.name} en Gorumin.`
+      `Gift cards, recargas y suscripciones de ${productCategory.name} en ${SITE_NAME}.`
 
     return {
       title,

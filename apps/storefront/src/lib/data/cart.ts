@@ -15,6 +15,7 @@ import {
 } from "./cookies"
 import { getRegion } from "./regions"
 import { getLocale } from "./locale-actions"
+import { getClientIpAddress } from "@lib/client-ip"
 
 /**
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
@@ -348,38 +349,45 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
       throw new Error("No existing cart found when setting addresses")
     }
 
-    const data: Record<string, unknown> = {
-      shipping_address: {
-        first_name: formData.get("shipping_address.first_name"),
-        last_name: formData.get("shipping_address.last_name"),
-        address_1: formData.get("shipping_address.address_1"),
-        address_2: "",
-        company: formData.get("shipping_address.company"),
-        postal_code: formData.get("shipping_address.postal_code"),
-        city: formData.get("shipping_address.city"),
-        country_code: formData.get("shipping_address.country_code"),
-        province: formData.get("shipping_address.province"),
-        phone: formData.get("shipping_address.phone"),
-      },
-      email: formData.get("email"),
+    const idType =
+      (formData.get("payer_identification_type") as string | null)?.trim() ||
+      "CC"
+    const idNumber = (
+      formData.get("payer_identification_number") as string | null
+    )?.trim()
+
+    if (!idNumber) {
+      throw new Error(
+        "El documento es obligatorio para pagos con PSE y otros medios de Mercado Pago."
+      )
     }
 
-    const sameAsBilling = formData.get("same_as_billing")
-    if (sameAsBilling === "on") data.billing_address = data.shipping_address
+    const existing = await retrieveCart(cartId, "metadata")
+    const metadata = {
+      ...((existing?.metadata ?? {}) as Record<string, unknown>),
+      payer_identification_type: idType,
+      payer_identification_number: idNumber,
+    }
 
-    if (sameAsBilling !== "on")
-      data.billing_address = {
-        first_name: formData.get("billing_address.first_name"),
-        last_name: formData.get("billing_address.last_name"),
-        address_1: formData.get("billing_address.address_1"),
-        address_2: "",
-        company: formData.get("billing_address.company"),
-        postal_code: formData.get("billing_address.postal_code"),
-        city: formData.get("billing_address.city"),
-        country_code: formData.get("billing_address.country_code"),
-        province: formData.get("billing_address.province"),
-        phone: formData.get("billing_address.phone"),
-      }
+    const shippingAddress = {
+      first_name: formData.get("shipping_address.first_name"),
+      last_name: formData.get("shipping_address.last_name"),
+      address_1: formData.get("shipping_address.address_1"),
+      address_2: "",
+      company: "",
+      postal_code: "00000",
+      city: formData.get("shipping_address.city"),
+      country_code: formData.get("shipping_address.country_code"),
+      province: formData.get("shipping_address.province"),
+      phone: formData.get("shipping_address.phone"),
+    }
+
+    const data: Record<string, unknown> = {
+      shipping_address: shippingAddress,
+      billing_address: shippingAddress,
+      email: formData.get("email"),
+      metadata,
+    }
     await updateCart(data as HttpTypes.StoreUpdateCart)
   } catch (e) {
     return e instanceof Error ? e.message : "No se pudieron guardar los datos."
@@ -440,13 +448,10 @@ const MP_APPROVED_STATUSES = [
 ]
 
 /**
- * Completes a cart paid with Mercado Pago (US-3.2 / RUM-24).
+ * Completes a cart paid with Mercado Pago.
  *
- * The Checkout Brick produces a one-time card `token` on the client; we inject
- * it into the active payment session (which the provider preserves) and then
- * complete the cart so the backend can authorize the charge against Mercado
- * Pago. Redirects to the success / pending / failure result screens depending
- * on the resulting payment status (US-7.6 / RUM-42).
+ * Supports card tokenization plus PSE / Efecty payloads from the Payment Brick.
+ * Redirects to Mercado Pago (bank or voucher) when the API returns mp_redirect_url.
  */
 export async function payWithMercadoPago(
   countryCode: string,
@@ -454,7 +459,7 @@ export async function payWithMercadoPago(
 ) {
   const cart = await retrieveCart(
     undefined,
-    "*payment_collection, *payment_collection.payment_sessions, *region, *shipping_address"
+    "*payment_collection, *payment_collection.payment_sessions, *region, *shipping_address, email, metadata"
   )
 
   if (!cart) {
@@ -462,9 +467,24 @@ export async function payWithMercadoPago(
   }
 
   // Inject the Brick token (+ payment method / payer data) into the session.
+  const pendingSession = cart.payment_collection?.payment_sessions?.find(
+    (s) => s.status === "pending"
+  )
+
+  const ip_address = await getClientIpAddress()
+
   await initiatePaymentSession(cart, {
     provider_id: MP_PROVIDER_ID,
-    data: paymentData,
+    data: {
+      ...(pendingSession?.data as Record<string, unknown> | undefined),
+      ...paymentData,
+      session_id: pendingSession?.id,
+      amount: cart.total,
+      ip_address,
+      payer_email: cart.email,
+      shipping_address: cart.shipping_address,
+      cart_metadata: cart.metadata,
+    },
   } as HttpTypes.StoreInitializePaymentSession)
 
   const headers = {
@@ -481,6 +501,25 @@ export async function payWithMercadoPago(
     }
   } catch (e) {
     failureReason = e instanceof Error ? e.message : "El pago fue rechazado."
+    try {
+      const refreshed = await retrieveCart(
+        cart.id,
+        "*payment_collection, *payment_collection.payment_sessions"
+      )
+      const session = refreshed?.payment_collection?.payment_sessions?.find(
+        (s) =>
+          s.id === pendingSession?.id ||
+          s.status === "error" ||
+          s.status === "pending"
+      )
+      const mpError = (session?.data as Record<string, unknown> | undefined)
+        ?.mp_error
+      if (typeof mpError === "string" && mpError.trim()) {
+        failureReason = mpError
+      }
+    } catch {
+      // Keep the generic failure reason.
+    }
   }
 
   if (order) {
@@ -490,6 +529,33 @@ export async function payWithMercadoPago(
     revalidateTag(await getCacheTag("carts"))
     revalidateTag(await getCacheTag("orders"))
     removeCartId()
+
+    let paymentData = (order.payment_collections?.[0]?.payments?.[0]?.data ??
+      {}) as Record<string, unknown>
+
+    if (!paymentData.mp_redirect_url) {
+      try {
+        const { order: fullOrder } = await sdk.client.fetch<{
+          order: HttpTypes.StoreOrder
+        }>(`/store/orders/${order.id}`, {
+          method: "GET",
+          query: { fields: "*payment_collections.payments" },
+          headers,
+        })
+        paymentData = (fullOrder.payment_collections?.[0]?.payments?.[0]?.data ??
+          {}) as Record<string, unknown>
+      } catch {
+        // Fall through to status-based redirect.
+      }
+    }
+
+    const mpRedirect = paymentData.mp_redirect_url as string | undefined
+    if (mpRedirect) {
+      const url = new URL(mpRedirect)
+      url.searchParams.set("order_id", order.id)
+      url.searchParams.set("country_code", cc)
+      redirect(url.toString())
+    }
 
     const approved = MP_APPROVED_STATUSES.includes(
       order.payment_status as string

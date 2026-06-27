@@ -11,7 +11,7 @@ import LineItemPrice from "@modules/common/components/line-item-price"
 import LineItemUnitPrice from "@modules/common/components/line-item-unit-price"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Spinner from "@modules/common/icons/spinner"
-import Thumbnail from "@modules/products/components/thumbnail"
+import LineItemThumbnail from "@modules/gorumin/components/line-item-thumbnail"
 import { useState } from "react"
 
 type ItemProps = {
@@ -45,7 +45,7 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
   const maxQuantity = item.variant?.manage_inventory ? 10 : maxQtyFromInventory
 
   return (
-    <Table.Row className="w-full" data-testid="product-row">
+    <Table.Row className="w-full hover:bg-transparent" data-testid="product-row">
       <Table.Cell className="!pl-0 p-4 w-24">
         <LocalizedClientLink
           href={`/products/${item.product_handle}`}
@@ -54,17 +54,13 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
             "small:w-24 w-12": type === "full",
           })}
         >
-          <Thumbnail
-            thumbnail={item.thumbnail}
-            images={item.variant?.product?.images}
-            size="square"
-          />
+          <LineItemThumbnail item={item} size={type === "preview" ? "sm" : "md"} />
         </LocalizedClientLink>
       </Table.Cell>
 
       <Table.Cell className="text-left">
         <Text
-          className="txt-medium-plus text-ui-fg-base"
+          className="txt-medium-plus text-on-surface"
           data-testid="product-title"
         >
           {item.product_title}
@@ -122,7 +118,7 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
         >
           {type === "preview" && (
             <span className="flex gap-x-1 ">
-              <Text className="text-ui-fg-muted">{item.quantity}x </Text>
+              <Text className="text-on-surface-variant/70">{item.quantity}x </Text>
               <LineItemUnitPrice
                 item={item}
                 style="tight"

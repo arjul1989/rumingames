@@ -18,6 +18,8 @@ import {
   setAuthToken,
   setPendingCustomer,
 } from "./cookies"
+import { isCustomerEmailVerified } from "@lib/customer-verification"
+import { linkGuestOrders } from "./link-guest-orders"
 
 export type CustomerAuthState =
   | { state: "error"; error: string }
@@ -58,7 +60,8 @@ export const retrieveCustomer =
       .fetch<{ customer: HttpTypes.StoreCustomer }>(`/store/customers/me`, {
         method: "GET",
         query: {
-          fields: "*orders",
+          fields:
+            "id,email,first_name,last_name,phone,metadata,*orders,*addresses",
         },
         headers,
         next,
@@ -134,9 +137,23 @@ export async function login(
   return completeLogin(email, password)
 }
 
-// Logs the customer in and reconciles the customer record. The behavior is
-// driven entirely by the backend's login response, so it works whether or not
-// email verification is enabled.
+// Logs the customer in and reconciles the customer record. Unverified accounts
+// (metadata.email_verified === false) never receive a session cookie.
+async function customerEmailIsVerified(token: string): Promise<boolean> {
+  try {
+    const { customer } = await sdk.client.fetch<{
+      customer: HttpTypes.StoreCustomer
+    }>("/store/customers/me", {
+      method: "GET",
+      query: { fields: "metadata" },
+      headers: { authorization: `Bearer ${token}` },
+    })
+    return isCustomerEmailVerified(customer)
+  } catch {
+    return false
+  }
+}
+
 async function completeLogin(
   email: string,
   password: string
@@ -202,6 +219,7 @@ async function completeLogin(
           first_name: pending?.first_name,
           last_name: pending?.last_name,
           phone: pending?.phone,
+          metadata: { email_verified: false },
         },
         {},
         { authorization: `Bearer ${token}` }
@@ -218,6 +236,14 @@ async function completeLogin(
     await removePendingCustomer()
   }
 
+  const verified = await customerEmailIsVerified(token)
+  if (!verified) {
+    if (customerExists) {
+      await resendVerificationEmail(email).catch(() => {})
+    }
+    return { state: "verification_required", email }
+  }
+
   await setAuthToken(token)
 
   const customerCacheTag = await getCacheTag("customers")
@@ -229,7 +255,28 @@ async function completeLogin(
     return { state: "error", error: String(error) }
   }
 
+  await linkGuestOrders()
+
   return { state: "success" }
+}
+
+export async function resendVerificationEmail(
+  email: string
+): Promise<{ error?: string }> {
+  try {
+    await sdk.client.fetch("/store/customers/resend-verification", {
+      method: "POST",
+      body: { email },
+    })
+    return {}
+  } catch (e) {
+    return {
+      error:
+        e instanceof Error
+          ? e.message
+          : "No se pudo reenviar el correo de confirmación.",
+    }
+  }
 }
 
 // Confirms a customer's email using the token from the verification link.

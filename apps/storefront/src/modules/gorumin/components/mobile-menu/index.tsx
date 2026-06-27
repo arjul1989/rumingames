@@ -2,15 +2,19 @@
 
 import { useState } from "react"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import { accountLabels } from "@lib/i18n/es-co"
 
 const LINKS = [
   { href: "/store", label: "TIENDA", highlight: true },
   { href: "/noticias", label: "NOTICIAS" },
   { href: "/streamers", label: "STREAMERS" },
-  { href: "/account", label: "MI CUENTA" },
 ] as const
 
-export default function MobileMenu() {
+type MobileMenuProps = {
+  customer: { first_name?: string | null } | null
+}
+
+export default function MobileMenu({ customer }: MobileMenuProps) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -41,6 +45,35 @@ export default function MobileMenu() {
                 {link.label}
               </LocalizedClientLink>
             ))}
+
+            <div className="my-2 border-t border-white/10" />
+
+            {customer ? (
+              <LocalizedClientLink
+                href="/account/orders"
+                onClick={() => setOpen(false)}
+                className="font-mono py-3 text-label-caps tracking-widest text-on-surface-variant transition-colors hover:text-primary"
+              >
+                {accountLabels.myPurchases}
+              </LocalizedClientLink>
+            ) : (
+              <>
+                <LocalizedClientLink
+                  href="/account"
+                  onClick={() => setOpen(false)}
+                  className="font-mono py-3 text-label-caps tracking-widest text-on-surface-variant transition-colors hover:text-primary"
+                >
+                  {accountLabels.signIn}
+                </LocalizedClientLink>
+                <LocalizedClientLink
+                  href="/account?view=register"
+                  onClick={() => setOpen(false)}
+                  className="brutalist-button my-1 bg-primary px-4 py-3 text-center font-mono text-label-caps tracking-widest text-on-primary"
+                >
+                  {accountLabels.register}
+                </LocalizedClientLink>
+              </>
+            )}
           </nav>
         </div>
       )}

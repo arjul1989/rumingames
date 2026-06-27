@@ -1,12 +1,13 @@
 import { Metadata } from "next"
 
 import { listProducts } from "@lib/data/products"
+import { filterStorefrontProducts } from "@lib/storefront-catalog"
 import { listArticles, listStreamers } from "@lib/data/cms"
-import { absoluteUrl, localizedAlternates, SITE_NAME } from "@lib/seo"
+import { absoluteUrl, localizedAlternates, openGraphBase, SITE_NAME } from "@lib/seo"
 import HomeTemplate from "@modules/gorumin/templates/home"
 import JsonLd from "@modules/common/components/json-ld"
 
-const TITLE = "Gorumin — Gift cards y recargas de videojuegos en Colombia"
+const TITLE = `${SITE_NAME} — Gift cards y recargas de videojuegos en Colombia`
 const DESCRIPTION =
   "Compra gift cards y recargas de Steam, PlayStation, Riot, Xbox y más con entrega digital inmediata. Noticias y streamers de la comunidad gamer colombiana."
 
@@ -74,7 +75,7 @@ export default async function Home(props: {
     <>
       <JsonLd data={[organization, website]} id="ld-home" />
       <HomeTemplate
-        products={productsResult.response.products}
+        products={filterStorefrontProducts(productsResult.response.products)}
         articles={articlesResult.articles}
         streamers={streamers}
       />

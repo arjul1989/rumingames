@@ -2,6 +2,8 @@
 
 import { HttpTypes } from "@medusajs/types"
 import { useEffect, useState } from "react"
+import { fundingLabels } from "@lib/i18n/es-co"
+import { isFundingUxEnabled } from "@lib/funding-settings"
 
 type CodeStatus = "pending" | "processing" | "delivered" | "failed" | "refunded"
 
@@ -13,7 +15,10 @@ type DeliveredCode = {
 
 const STATUS = {
   pending: { label: "Preparándose", color: "text-on-surface-variant/70" },
-  processing: { label: "Procesando", color: "text-secondary" },
+  processing: {
+    label: isFundingUxEnabled() ? "Generando código" : "Procesando",
+    color: "text-secondary",
+  },
   delivered: { label: "Entregado", color: "text-secondary" },
   failed: { label: "Fallido", color: "text-error" },
   refunded: { label: "Reembolsado", color: "text-tertiary" },
@@ -33,7 +38,13 @@ export default function DigitalCodes({ order }: { order: HttpTypes.StoreOrder })
     let active = true
     fetch(`/api/orders/${order.id}/digital-codes`, { credentials: "include" })
       .then(async (r) => {
-        if (!r.ok) throw new Error("No se pudieron cargar los códigos.")
+        if (!r.ok) {
+          const body = await r.json().catch(() => ({}))
+          const msg =
+            (body as { message?: string }).message ||
+            "No se pudieron cargar los códigos."
+          throw new Error(msg)
+        }
         return r.json()
       })
       .then((data) => {
@@ -128,8 +139,9 @@ export default function DigitalCodes({ order }: { order: HttpTypes.StoreOrder })
                 </p>
               ) : (
                 <p className="text-sm text-on-surface-variant/70">
-                  Tu código se está preparando. Te avisaremos en cuanto esté
-                  listo.
+                  {isFundingUxEnabled()
+                    ? fundingLabels.generatingCode
+                    : "Tu código se está preparando. Te avisaremos en cuanto esté listo."}
                 </p>
               )}
             </div>

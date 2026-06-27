@@ -6,12 +6,12 @@ export type GoruminAdminRole = "admin" | "editor" | "support"
 
 export const GORUMIN_ROLE_META_KEY = "gorumin_role"
 
-export type GoruminPermission = "cms" | "fazer" | "refunds" | "deliveries" | "supplier"
+export type GoruminPermission = "cms" | "fazer" | "refunds" | "deliveries" | "supplier" | "support"
 
 const ROLE_PERMISSIONS: Record<GoruminAdminRole, ReadonlySet<GoruminPermission>> = {
-  admin: new Set(["cms", "fazer", "refunds", "deliveries", "supplier"]),
+  admin: new Set(["cms", "fazer", "refunds", "deliveries", "supplier", "support"]),
   editor: new Set(["cms"]),
-  support: new Set(["deliveries"]),
+  support: new Set(["deliveries", "support"]),
 }
 
 const VALID_ROLES = new Set<string>(["admin", "editor", "support"])

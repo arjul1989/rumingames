@@ -1,18 +1,30 @@
 "use client"
 
+import { checkoutLabels } from "@lib/i18n/es-co"
+import type { MpPaymentSettings } from "@lib/mp-payment-settings.shared"
 import { Heading, Text, clx } from "@modules/common/components/ui"
-
-import PaymentButton from "../payment-button"
-import { useSearchParams } from "next/navigation"
 import { HttpTypes } from "@medusajs/types"
+import { useSearchParams } from "next/navigation"
+import PaymentButton from "../payment-button"
 
-const Review = ({ cart }: { cart: HttpTypes.StoreCart }) => {
+const Review = ({
+  cart,
+  mpSettings,
+  mpCustomerId,
+}: {
+  cart: HttpTypes.StoreCart
+  mpSettings: MpPaymentSettings
+  mpCustomerId?: string | null
+}) => {
   const searchParams = useSearchParams()
 
   const isOpen = searchParams.get("step") === "review"
 
   const paidByGiftcard = !!(
-    (cart as unknown as Record<string, unknown>)?.gift_cards && ((cart as unknown as Record<string, unknown>)?.gift_cards as unknown[])?.length > 0 && cart?.total === 0
+    (cart as unknown as Record<string, unknown>)?.gift_cards &&
+    ((cart as unknown as Record<string, unknown>)?.gift_cards as unknown[])
+      ?.length > 0 &&
+    cart?.total === 0
   )
 
   const previousStepsCompleted =
@@ -37,16 +49,26 @@ const Review = ({ cart }: { cart: HttpTypes.StoreCart }) => {
       </div>
       {isOpen && previousStepsCompleted && (
         <>
-          <div className="flex items-start gap-x-1 w-full mb-6">
-            <div className="w-full">
-              <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                Al confirmar el pago aceptas nuestros Términos de Uso, Términos
-                de Venta y Política de Reembolsos, y confirmas que has leído la
-                Política de Privacidad de Gorumin.
+          <div className="flex flex-col gap-4 w-full mb-6">
+            <Text className="txt-medium-plus text-ui-fg-base">
+              {checkoutLabels.reviewTerms}
+            </Text>
+            <div
+              className="rounded-lg border border-amber-400/35 bg-amber-500/10 px-4 py-3"
+              role="note"
+              data-testid="checkout-region-disclaimer"
+            >
+              <Text className="text-sm leading-relaxed text-amber-100/95">
+                {checkoutLabels.reviewRegionWarning}
               </Text>
             </div>
           </div>
-          <PaymentButton cart={cart} data-testid="submit-order-button" />
+          <PaymentButton
+            cart={cart}
+            mpSettings={mpSettings}
+            mpCustomerId={mpCustomerId}
+            data-testid="submit-order-button"
+          />
         </>
       )}
     </div>

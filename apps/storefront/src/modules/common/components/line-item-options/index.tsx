@@ -17,7 +17,7 @@ const LineItemOptions = ({
     <Text
       data-testid={dataTestid}
       data-value={dataValue}
-      className="inline-block txt-medium text-ui-fg-subtle w-full overflow-hidden text-ellipsis"
+      className="inline-block txt-medium text-on-surface-variant/70 w-full overflow-hidden text-ellipsis"
     >
       {cartLabels.variant}: {variant?.title}
     </Text>

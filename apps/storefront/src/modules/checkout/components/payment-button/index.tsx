@@ -2,6 +2,8 @@
 
 import { isManual, isMercadoPago, isStripeLike } from "@lib/constants"
 import { placeOrder } from "@lib/data/cart"
+import { checkoutLabels } from "@lib/i18n/es-co"
+import type { MpPaymentSettings } from "@lib/mp-payment-settings.shared"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
@@ -11,11 +13,15 @@ import MercadoPagoPayment from "../mercadopago-payment"
 
 type PaymentButtonProps = {
   cart: HttpTypes.StoreCart
+  mpSettings: MpPaymentSettings
+  mpCustomerId?: string | null
   "data-testid": string
 }
 
 const PaymentButton: React.FC<PaymentButtonProps> = ({
   cart,
+  mpSettings,
+  mpCustomerId,
   "data-testid": dataTestId,
 }) => {
   const notReady =
@@ -40,6 +46,8 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
         <MercadoPagoPayment
           cart={cart}
           countryCode={countryCode}
+          mpSettings={mpSettings}
+          mpCustomerId={mpCustomerId}
           data-testid={dataTestId}
         />
       )
@@ -154,10 +162,11 @@ const StripePaymentButton = ({
         disabled={disabled || notReady}
         onClick={handlePayment}
         size="large"
+        className="checkout-cta"
         isLoading={submitting}
         data-testid={dataTestId}
       >
-        Realizar pedido
+        {checkoutLabels.placeOrder}
       </Button>
       <ErrorMessage
         error={errorMessage}
@@ -194,9 +203,10 @@ const ManualTestPaymentButton = ({ notReady }: { notReady: boolean }) => {
         isLoading={submitting}
         onClick={handlePayment}
         size="large"
+        className="checkout-cta"
         data-testid="submit-order-button"
       >
-        Realizar pedido
+        {checkoutLabels.placeOrder}
       </Button>
       <ErrorMessage
         error={errorMessage}

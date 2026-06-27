@@ -1,5 +1,9 @@
 import { PaymentSessionStatus } from "@medusajs/framework/utils"
-import { mpStatusToSessionStatus, mpStatusToAction } from "../lib/status"
+import {
+  medusaAuthorizeStatusFromMpPayment,
+  mpStatusToSessionStatus,
+  mpStatusToAction,
+} from "../lib/status"
 
 describe("mercadopago status mapping", () => {
   it("maps approved to captured / successful", () => {
@@ -17,6 +21,27 @@ describe("mercadopago status mapping", () => {
       expect(mpStatusToSessionStatus(s)).toBe(PaymentSessionStatus.PENDING)
       expect(mpStatusToAction(s)).toBe("pending")
     }
+  })
+
+  it("treats pending PSE/Efecty as authorized for Medusa cart completion", () => {
+    expect(
+      medusaAuthorizeStatusFromMpPayment({
+        status: "pending",
+        payment_method_id: "pse",
+      })
+    ).toBe(PaymentSessionStatus.AUTHORIZED)
+    expect(
+      medusaAuthorizeStatusFromMpPayment({
+        status: "pending",
+        payment_method_id: "efecty",
+      })
+    ).toBe(PaymentSessionStatus.AUTHORIZED)
+    expect(
+      medusaAuthorizeStatusFromMpPayment({
+        status: "pending",
+        payment_method_id: "visa",
+      })
+    ).toBe(PaymentSessionStatus.PENDING)
   })
 
   it("maps rejected to error / failed", () => {

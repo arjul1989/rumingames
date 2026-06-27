@@ -3,6 +3,7 @@ import { Modules, PaymentWebhookEvents } from "@medusajs/framework/utils"
 import { verifyMpSignature } from "../../../modules/payment-mercadopago/lib/signature"
 import { clientIp, rateLimit } from "../../../lib/rate-limit"
 import { emitMonitorAlert } from "../../../lib/monitoring"
+import { logSupportTrace } from "../../../lib/support/log-support-trace"
 
 // Provider id segment expected by Medusa's payment webhook pipeline. The module
 // resolves it as `pp_${provider}` -> pp_mercadopago_mercadopago.
@@ -70,7 +71,16 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   }
   await cache.set(dedupeKey, "1", DEDUPE_TTL_SECONDS)
 
-  // 4) Hand off to Medusa's payment pipeline. The provider's
+  await logSupportTrace(req.scope, {
+    stage: "webhook_mp",
+    label: `Webhook MP ${body.action ?? type ?? "payment"}`,
+    endpoint: "/hooks/mercadopago",
+    method: "POST",
+    request: { type, action: body.action, data_id: dataId, notification_id: notificationId },
+    response: { accepted: true },
+  })
+
+  // 4) Hand off to Medusa's payment pipeline.
   // getWebhookActionAndData fetches the payment, maps the status and resolves
   // the payment session; processPaymentWorkflow then captures and emits events.
   try {

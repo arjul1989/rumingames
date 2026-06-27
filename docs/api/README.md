@@ -148,7 +148,7 @@ y úsalo como `Authorization: Bearer <admin_jwt>`.
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| POST | `/hooks/mercadopago` | Webhook de Mercado Pago. Verifica `x-signature` (HMAC-SHA256); firma inválida => `401`. Idempotente. |
+| POST | `/hooks/mercadopago` | Webhook de Mercado Pago. Verifica `x-signature` (HMAC-SHA256); firma inválida => `401`. Idempotente. Solo eventos `payment`. |
 | GET | `/health` | Healthcheck del backend. |
 
 ---

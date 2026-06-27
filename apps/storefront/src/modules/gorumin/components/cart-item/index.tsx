@@ -1,10 +1,10 @@
 "use client"
 
-import Image from "next/image"
 import { useState } from "react"
 import { HttpTypes } from "@medusajs/types"
 import { deleteLineItem, updateLineItem } from "@lib/data/cart"
 import { formatCop } from "@modules/gorumin/lib/product-meta"
+import LineItemThumbnail from "@modules/gorumin/components/line-item-thumbnail"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 // Gorumin cart line item (US-7.5). Shows the player id for top-ups, kept on the
@@ -49,23 +49,9 @@ export default function CartItem({
     <div className="flex gap-4 border-b border-white/10 py-5">
       <LocalizedClientLink
         href={`/products/${item.product_handle}`}
-        className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-surface-container-low"
+        className="block"
       >
-        {item.thumbnail ? (
-          <Image
-            src={item.thumbnail}
-            alt={item.product_title ?? ""}
-            fill
-            sizes="80px"
-            className="object-cover"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <span className="material-symbols-outlined text-on-surface-variant/40">
-              redeem
-            </span>
-          </div>
-        )}
+        <LineItemThumbnail item={item} size="md" />
       </LocalizedClientLink>
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">

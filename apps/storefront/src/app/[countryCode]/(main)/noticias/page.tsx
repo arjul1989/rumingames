@@ -1,14 +1,14 @@
 import { Metadata } from "next"
 
 import { listArticles, listArticleCategories } from "@lib/data/cms"
-import { localizedAlternates } from "@lib/seo"
+import { localizedAlternates, SITE_NAME } from "@lib/seo"
 import ArticleCard from "@modules/gorumin/components/article-card"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 export const metadata: Metadata = {
   title: "Noticias",
   description:
-    "Lo último del mundo gaming: lanzamientos, esports, reviews y guías de la comunidad Gorumin.",
+    `Lo último del mundo gaming: lanzamientos, esports, reviews y guías de la comunidad ${SITE_NAME}.`,
   alternates: localizedAlternates("noticias"),
 }
 

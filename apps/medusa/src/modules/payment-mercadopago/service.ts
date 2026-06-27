@@ -29,8 +29,17 @@ import type {
   WebhookActionResult,
 } from "@medusajs/framework/types"
 import { MercadoPagoClient } from "./lib/client"
-import { mpStatusToAction, mpStatusToSessionStatus } from "./lib/status"
-import type { MpCreatePaymentInput, MpPayment } from "./lib/types"
+import { createMockMercadoPagoClient } from "./lib/mock-client"
+import { buildMpCreatePaymentPayload } from "./lib/build-payment-payload"
+import { isMockMpEnabled } from "../../lib/dev-mocks"
+import { mpRedirectUrl } from "./lib/enabled-methods"
+import { buildMpPaymentSnapshot } from "./lib/mp-payment-snapshot"
+import {
+  medusaAuthorizeStatusFromMpPayment,
+  mpStatusToAction,
+  mpStatusToSessionStatus,
+} from "./lib/status"
+import type { MpPayment } from "./lib/types"
 
 export interface MercadoPagoOptions {
   accessToken: string
@@ -40,11 +49,18 @@ export interface MercadoPagoOptions {
   locale?: string
   baseUrl?: string
   notificationUrl?: string
+  /** Buyer return URL after PSE / bank redirect. */
+  callbackUrl?: string
   /** Shown on the buyer's card statement. */
   statementDescriptor?: string
 }
 
 type InjectedDependencies = { logger: Logger }
+
+type MpClientLike = Pick<
+  MercadoPagoClient,
+  "createPayment" | "getPayment" | "cancelPayment" | "refundPayment"
+>
 
 // Mercado Pago payment provider for Medusa v2, tuned for Colombia (es-CO / COP)
 // with card and PSE support via Checkout Bricks (US-3.1 / RUM-23).
@@ -53,16 +69,23 @@ class MercadoPagoProviderService extends AbstractPaymentProvider<MercadoPagoOpti
 
   protected readonly logger_: Logger
   protected readonly options_: MercadoPagoOptions
-  protected readonly client_: MercadoPagoClient
+  protected readonly client_: MpClientLike
 
   constructor(container: InjectedDependencies, options: MercadoPagoOptions) {
     super(container, options)
     this.logger_ = container.logger
     this.options_ = options
-    this.client_ = new MercadoPagoClient({
-      accessToken: options.accessToken,
-      baseUrl: options.baseUrl,
-    })
+    if (isMockMpEnabled()) {
+      this.client_ = createMockMercadoPagoClient()
+      this.logger_.warn(
+        "MOCK_MP=true — Mercado Pago API mocked; use /dev/mock-mp to approve/reject."
+      )
+    } else {
+      this.client_ = new MercadoPagoClient({
+        accessToken: options.accessToken,
+        baseUrl: options.baseUrl,
+      })
+    }
   }
 
   static validateOptions(options: Record<string, unknown>) {
@@ -79,13 +102,6 @@ class MercadoPagoProviderService extends AbstractPaymentProvider<MercadoPagoOpti
   }
 
   async initiatePayment(input: InitiatePaymentInput): Promise<InitiatePaymentOutput> {
-    // The Brick collects the card token on the client; we only create the
-    // session here and hand the public key + amount to the frontend.
-    //
-    // The storefront re-initiates this session once the Brick produces a
-    // token (`{ token, payment_method_id, issuer_id, installments, payer }`),
-    // so we preserve any incoming `input.data` here. Otherwise the token
-    // would be wiped before `authorizePayment` runs at cart completion.
     const incoming = (input.data ?? {}) as Record<string, unknown>
     const id = (incoming.session_id as string) ?? `mp_${crypto.randomUUID()}`
     return {
@@ -116,50 +132,50 @@ class MercadoPagoProviderService extends AbstractPaymentProvider<MercadoPagoOpti
   async authorizePayment(input: AuthorizePaymentInput): Promise<AuthorizePaymentOutput> {
     const data = input.data ?? {}
 
-    // Idempotent re-authorization: a payment already exists for this session.
     if (data.mp_payment_id) {
       const existing = await this.client_.getPayment(data.mp_payment_id as number)
-      return { status: mpStatusToSessionStatus(existing.status), data: this.mergePayment(data, existing) }
-    }
-
-    const token = data.token as string | undefined
-    if (!token) {
-      throw new MedusaError(
-        MedusaError.Types.INVALID_DATA,
-        "Mercado Pago authorization requires a card `token` from the Brick."
-      )
-    }
-
-    const amount = data.amount
-    if (amount == null) {
-      throw new MedusaError(
-        MedusaError.Types.INVALID_DATA,
-        "Mercado Pago authorization requires `amount` in the payment session."
-      )
+      return {
+        status: medusaAuthorizeStatusFromMpPayment(existing),
+        data: this.mergePayment(data, existing),
+      }
     }
 
     const sessionId = (data.session_id as string) ?? crypto.randomUUID()
-    const payload: MpCreatePaymentInput = {
-      transaction_amount: this.toNumber(amount),
-      token,
-      installments: (data.installments as number) ?? 1,
-      payment_method_id: data.payment_method_id as string | undefined,
-      issuer_id: data.issuer_id as string | undefined,
-      payer: data.payer as MpCreatePaymentInput["payer"],
-      external_reference: sessionId,
-      description: data.description as string | undefined,
-      statement_descriptor: this.options_.statementDescriptor,
-      notification_url: this.options_.notificationUrl,
+
+    let payload
+    try {
+      const ctx = (input.context ?? {}) as Record<string, unknown>
+      payload = buildMpCreatePaymentPayload(
+        {
+          ...data,
+          session_id: sessionId,
+          ip_address: data.ip_address ?? ctx.ip_address ?? ctx.customer_ip,
+        },
+        {
+          notificationUrl: this.options_.notificationUrl,
+          callbackUrl: this.options_.callbackUrl,
+          statementDescriptor: this.options_.statementDescriptor,
+        }
+      )
+    } catch (e) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        (e as Error).message
+      )
     }
 
     try {
       const payment = await this.client_.createPayment(payload, sessionId)
-      return { status: mpStatusToSessionStatus(payment.status), data: this.mergePayment(data, payment) }
+      return {
+        status: medusaAuthorizeStatusFromMpPayment(payment),
+        data: this.mergePayment(data, payment),
+      }
     } catch (e) {
-      this.logger_.error(`Mercado Pago authorize failed: ${(e as Error).message}`)
+      const message = (e as Error).message
+      this.logger_.error(`Mercado Pago authorize failed: ${message}`)
       return {
         status: PaymentSessionStatus.ERROR,
-        data: { ...data, mp_error: (e as Error).message },
+        data: { ...data, mp_error: message },
       }
     }
   }
@@ -255,11 +271,13 @@ class MercadoPagoProviderService extends AbstractPaymentProvider<MercadoPagoOpti
   }
 
   private mergePayment(data: Record<string, unknown>, payment: MpPayment): Record<string, unknown> {
+    const redirect = mpRedirectUrl(payment)
+    const snapshot = buildMpPaymentSnapshot(payment as unknown as Record<string, unknown>)
     return {
       ...data,
+      ...snapshot,
       mp_payment_id: payment.id,
-      mp_status: payment.status,
-      mp_status_detail: payment.status_detail,
+      ...(redirect ? { mp_redirect_url: redirect } : {}),
     }
   }
 }

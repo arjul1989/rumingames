@@ -3,6 +3,10 @@
 import React, { useEffect, useActionState } from "react";
 
 import { addressLabels, accountLabels } from "@lib/i18n/es-co"
+import {
+  displayCustomerField,
+  displayCustomerName,
+} from "@lib/customer-display"
 import Input from "@modules/common/components/input"
 
 import AccountInfo from "../account-info"
@@ -47,10 +51,10 @@ const ProfileName: React.FC<MyInformationProps> = ({ customer }) => {
   }, [state])
 
   return (
-    <form action={formAction} className="w-full overflow-visible">
+    <form id="profile-name-form" action={formAction} className="w-full overflow-visible">
       <AccountInfo
         label={accountLabels.name}
-        currentInfo={`${customer.first_name} ${customer.last_name}`}
+        currentInfo={displayCustomerName(customer.first_name, customer.last_name)}
         isSuccess={successState}
         isError={!!state?.error}
         clearState={clearState}

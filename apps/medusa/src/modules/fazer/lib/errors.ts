@@ -1,12 +1,23 @@
 // Typed errors for the Fazer Cards client (US-2.1 / RUM-16).
 
+function fazerErrorMessage(status: number, body: unknown): string {
+  if (body && typeof body === "object") {
+    const record = body as Record<string, unknown>
+    if (typeof record.error === "string" && record.error.trim()) {
+      const code = typeof record.code === "string" ? ` (${record.code})` : ""
+      return `Fazer API: ${record.error}${code}`
+    }
+  }
+  return `Fazer API error (status ${status})`
+}
+
 export class FazerApiError extends Error {
   constructor(
     public status: number,
     public body: unknown,
     message?: string
   ) {
-    super(message ?? `Fazer API error (status ${status})`)
+    super(message ?? fazerErrorMessage(status, body))
     this.name = "FazerApiError"
   }
 }

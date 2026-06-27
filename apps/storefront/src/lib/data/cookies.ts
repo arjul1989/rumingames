@@ -1,12 +1,19 @@
 import "server-only"
 import { cookies as nextCookies } from "next/headers"
+import type { NextResponse } from "next/server"
+
+const AUTH_COOKIE = "_medusa_jwt"
+const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
+
+/** Shared httpOnly session cookie name (server actions + BFF). */
+export const SESSION_COOKIE = AUTH_COOKIE
 
 export const getAuthHeaders = async (): Promise<
   { authorization: string } | Record<string, never>
 > => {
   try {
     const cookies = await nextCookies()
-    const token = cookies.get("_medusa_jwt")?.value
+    const token = cookies.get(AUTH_COOKIE)?.value
 
     if (!token) {
       return {}
@@ -51,19 +58,29 @@ export const getCacheOptions = async (
 
 export const setAuthToken = async (token: string) => {
   const cookies = await nextCookies()
-  cookies.set("_medusa_jwt", token, {
-    maxAge: 60 * 60 * 24 * 7,
-    httpOnly: true,
-    sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
-  })
+  cookies.set(AUTH_COOKIE, token, authCookieOptions())
+}
+
+/** Use in Route Handlers: cookies().set() is not applied to NextResponse.redirect(). */
+export function setAuthTokenOnResponse(res: NextResponse, token: string): void {
+  res.cookies.set(AUTH_COOKIE, token, authCookieOptions())
 }
 
 export const removeAuthToken = async () => {
   const cookies = await nextCookies()
-  cookies.set("_medusa_jwt", "", {
+  cookies.set(AUTH_COOKIE, "", {
     maxAge: -1,
   })
+}
+
+function authCookieOptions() {
+  return {
+    maxAge: AUTH_COOKIE_MAX_AGE,
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+  }
 }
 
 export type PendingCustomer = {

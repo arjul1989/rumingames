@@ -2,6 +2,8 @@
 
 import React, { useEffect, useActionState } from "react";
 
+import { addressLabels, accountLabels } from "@lib/i18n/es-co"
+import { displayCustomerField } from "@lib/customer-display"
 import Input from "@modules/common/components/input"
 
 import AccountInfo from "../account-info"
@@ -15,16 +17,14 @@ type MyInformationProps = {
 const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
   const [successState, setSuccessState] = React.useState(false)
 
-  // TODO: It seems we don't support updating emails now?
+  // Email updates are not supported yet — keep the form read-only feedback honest.
   const updateCustomerEmail = (
     _currentState: Record<string, unknown>,
     _formData: FormData
   ) => {
-    try {
-      // email: formData.get("email") as string
-      return { success: true, error: null }
-    } catch (error) {
-      return { success: false, error: String(error) }
+    return {
+      success: false,
+      error: "El correo no se puede cambiar por ahora.",
     }
   }
 
@@ -42,10 +42,13 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
   }, [state])
 
   return (
-    <form action={formAction} className="w-full">
+    <form id="profile-email-form" action={formAction} className="w-full">
       <AccountInfo
-        label="Email"
-        currentInfo={`${customer.email}`}
+        label={addressLabels.email}
+        currentInfo={displayCustomerField(
+          customer.email,
+          accountLabels.completeEmail
+        )}
         isSuccess={successState}
         isError={!!state.error}
         errorMessage={state.error || undefined}
@@ -54,12 +57,12 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
       >
         <div className="grid grid-cols-1 gap-y-2">
           <Input
-            label="Email"
+            label={addressLabels.email}
             name="email"
             type="email"
             autoComplete="email"
             required
-            defaultValue={customer.email}
+            defaultValue={customer.email ?? ""}
             data-testid="email-input"
           />
         </div>

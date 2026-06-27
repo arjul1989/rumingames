@@ -6,11 +6,16 @@ import { LOGIN_VIEW } from "@modules/account/templates/login-template"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import GoogleAuthButton from "@modules/account/components/google-auth-button"
+import ResendVerificationButton from "@modules/account/components/resend-verification-button"
 import { signup } from "@lib/data/customer"
 
 type Props = {
   setCurrentView: (view: LOGIN_VIEW) => void
 }
+
+const GOOGLE_AUTH_ENABLED =
+  process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true"
 
 const Register = ({ setCurrentView }: Props) => {
   const [message, formAction] = useActionState(signup, null)
@@ -24,15 +29,16 @@ const Register = ({ setCurrentView }: Props) => {
         Crear cuenta
       </h1>
       <p className="text-center text-base-regular text-on-surface-variant/70 mb-4">
-        Únete a Gorumin para guardar tus órdenes y revelar tus códigos.
+        Únete a rumin para guardar tus órdenes y revelar tus códigos.
       </p>
       {message?.state === "verification_required" && (
         <div
           className="hyper-glass w-full mb-4 text-center text-base-regular text-on-surface rounded-xl p-4"
           data-testid="register-verification-message"
         >
-          Enviamos un enlace de verificación a <strong>{message.email}</strong>.
-          Revisa tu bandeja, verifica tu correo y luego inicia sesión.
+          Enviamos un enlace de confirmación a <strong>{message.email}</strong>.
+          Confirma tu correo para activar tu cuenta y ver tus códigos.
+          <ResendVerificationButton email={message.email} />
         </div>
       )}
       <form className="w-full flex flex-col" action={formAction}>
@@ -94,6 +100,21 @@ const Register = ({ setCurrentView }: Props) => {
           Crear cuenta
         </SubmitButton>
       </form>
+      {GOOGLE_AUTH_ENABLED && (
+        <>
+          <div className="relative w-full my-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-on-surface/10" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-on-surface-variant/60">
+                o
+              </span>
+            </div>
+          </div>
+          <GoogleAuthButton />
+        </>
+      )}
       <span className="text-center text-on-surface-variant/70 text-small-regular mt-6">
         ¿Ya tienes cuenta?{" "}
         <button

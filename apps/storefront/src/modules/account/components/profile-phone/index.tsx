@@ -3,6 +3,7 @@
 import React, { useEffect, useActionState } from "react";
 
 import { addressLabels, accountLabels } from "@lib/i18n/es-co"
+import { displayCustomerField } from "@lib/customer-display"
 import Input from "@modules/common/components/input"
 
 import AccountInfo from "../account-info"
@@ -13,7 +14,7 @@ type MyInformationProps = {
   customer: HttpTypes.StoreCustomer
 }
 
-const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
+const ProfilePhone: React.FC<MyInformationProps> = ({ customer }) => {
   const [successState, setSuccessState] = React.useState(false)
 
   const updateCustomerPhone = async (
@@ -46,10 +47,13 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
   }, [state])
 
   return (
-    <form action={formAction} className="w-full">
+    <form id="profile-phone-form" action={formAction} className="w-full">
       <AccountInfo
         label={addressLabels.phone}
-        currentInfo={`${customer.phone}`}
+        currentInfo={displayCustomerField(
+          customer.phone,
+          accountLabels.completePhone
+        )}
         isSuccess={successState}
         isError={!!state.error}
         errorMessage={state.error || undefined}
@@ -72,4 +76,4 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
   )
 }
 
-export default ProfileEmail
+export default ProfilePhone

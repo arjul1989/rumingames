@@ -1,4 +1,6 @@
+import { retrieveCustomer } from "@lib/data/customer"
 import { retrieveOrder } from "@lib/data/orders"
+import { fundingLabels } from "@lib/i18n/es-co"
 import { convertToLocale } from "@lib/util/money"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import PaymentStatusPoller from "@modules/gorumin/components/payment-status-poller"
@@ -21,7 +23,11 @@ export default async function CheckoutPendingPage({
 }: Props) {
   const { countryCode } = await params
   const { order: orderId } = await searchParams
-  const order = orderId ? await retrieveOrder(orderId).catch(() => null) : null
+  const [order, customer] = await Promise.all([
+    orderId ? retrieveOrder(orderId).catch(() => null) : null,
+    retrieveCustomer().catch(() => null),
+  ])
+  const isLoggedIn = Boolean(customer)
 
   return (
     <div className="content-container flex flex-col gap-8 py-12">
@@ -36,6 +42,11 @@ export default async function CheckoutPendingPage({
           Mercado Pago aún está procesando la transacción. Esto puede tardar
           unos instantes; no cierres esta ventana.
         </p>
+        {!isLoggedIn && (
+          <p className="max-w-lg text-sm text-on-surface-variant/70">
+            {fundingLabels.checkoutPendingGuestHint}
+          </p>
+        )}
         {order && (
           <div className="flex items-center gap-6 font-mono text-label-caps tracking-widest text-on-surface-variant/70">
             <span>ORDEN #{order.display_id}</span>
@@ -48,16 +59,29 @@ export default async function CheckoutPendingPage({
           </div>
         )}
         {orderId && (
-          <PaymentStatusPoller orderId={orderId} countryCode={countryCode} />
+          <PaymentStatusPoller
+            orderId={orderId}
+            countryCode={countryCode}
+            isLoggedIn={isLoggedIn}
+          />
         )}
       </div>
 
-      <LocalizedClientLink
-        href="/account/orders"
-        className="brutalist-button bg-primary px-8 py-4 text-center font-mono text-label-caps tracking-widest text-on-primary transition-transform hover:scale-[1.02]"
-      >
-        IR A MIS PEDIDOS
-      </LocalizedClientLink>
+      {isLoggedIn ? (
+        <LocalizedClientLink
+          href="/account/orders"
+          className="brutalist-button bg-primary px-8 py-4 text-center font-mono text-label-caps tracking-widest text-on-primary transition-transform hover:scale-[1.02]"
+        >
+          {fundingLabels.checkoutSuccessViewOrders}
+        </LocalizedClientLink>
+      ) : (
+        <LocalizedClientLink
+          href="/account"
+          className="brutalist-button bg-primary px-8 py-4 text-center font-mono text-label-caps tracking-widest text-on-primary transition-transform hover:scale-[1.02]"
+        >
+          {fundingLabels.checkoutSuccessGuestCta}
+        </LocalizedClientLink>
+      )}
     </div>
   )
 }

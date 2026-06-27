@@ -1,6 +1,9 @@
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { fulfillDigitalOrder } from "../lib/fulfill-digital-order"
+import { fundAndFulfillDigitalOrder } from "../lib/funding/fund-and-fulfill-order"
+import { isPerOrderFundingEnabled } from "../lib/funding/funding-config"
+import { isMockFazerEnabled } from "../lib/dev-mocks"
 
 // When a payment is captured, fulfill the order's digital line items against
 // Fazer Cards (US-2.4 / RUM-19). Resolves the order from the payment via the
@@ -11,7 +14,7 @@ export default async function paymentCapturedFulfillmentHandler({
 }: SubscriberArgs<{ id: string }>) {
   const logger = container.resolve("logger")
 
-  if (!process.env.FAZER_API_KEY) {
+  if (!process.env.FAZER_API_KEY && !isMockFazerEnabled()) {
     logger.info("Skipping fulfillment: FAZER_API_KEY not set.")
     return
   }
@@ -36,7 +39,10 @@ export default async function paymentCapturedFulfillmentHandler({
     return
   }
 
-  await fulfillDigitalOrder(container, { orderId })
+  await (isPerOrderFundingEnabled() ? fundAndFulfillDigitalOrder : fulfillDigitalOrder)(
+    container,
+    { orderId }
+  )
 }
 
 export const config: SubscriberConfig = {

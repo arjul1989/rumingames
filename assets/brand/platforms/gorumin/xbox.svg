@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 400 400" role="img" aria-label="Xbox Game Pass Ultimate">
+  <defs>
+    
+      <linearGradient id="bg-xbox" x1="0" y1="0" x2="400" y2="400">
+        <stop stop-color="#052805"/>
+        <stop offset="0.5" stop-color="#0b6b0b"/>
+        <stop offset="1" stop-color="#107c10"/>
+      </linearGradient>
+      <radialGradient id="shine-xbox" cx="75%" cy="20%" r="55%">
+        <stop stop-color="#ffffff" stop-opacity="0.14"/>
+        <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+      </radialGradient>
+    <linearGradient id="frame-xbox" x1="0" y1="0" x2="400" y2="400">
+      <stop stop-color="#ddb7ff" stop-opacity="0.35"/>
+      <stop offset="0.5" stop-color="#4d4354" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#4cd7f6" stop-opacity="0.25"/>
+    </linearGradient>
+    <filter id="glow-xbox" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="clip-xbox"><rect width="400" height="400" rx="28"/></clipPath>
+  </defs>
+
+  <!-- Gorumin dark base -->
+  <rect width="400" height="400" rx="28" fill="#0b1326"/>
+
+  <g clip-path="url(#clip-xbox)">
+    <rect width="400" height="400" fill="url(#bg-xbox)"/>
+    <rect width="400" height="400" fill="url(#shine-xbox)"/>
+    <ellipse cx="200" cy="390" rx="170" ry="50" fill="#b76dff" fill-opacity="0.1"/>
+    <image xlink:href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4OCA4OCIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsPSJYYm94Ij4KICA8cGF0aCBmaWxsPSIjRkZGRkZGIiBkPSJNMzkuNzMgODYuOTFjLTYuNjI4LS42MzUtMTMuMzM4LTMuMDE1LTE5LjEwMi02Ljc3Ni00LjgzLTMuMTUtNS45Mi00LjQ0Ny01LjkyLTcuMDMyIDAtNS4xOTMgNS43MS0xNC4yOSAxNS40OC0yNC42NTggNS41NDctNS44OSAxMy4yNzUtMTIuNzkgMTQuMTEtMTIuNjA0IDEuNjI2LjM2MyAxNC42MTYgMTMuMDM0IDE5LjQ4IDE5IDcuNjkgOS40MyAxMS4yMjQgMTcuMTU0IDkuNDI4IDIwLjU5Ny0xLjM2NSAyLjYxNy05LjgzNyA3LjczMy0xNi4wNiA5LjY5OC01LjEzIDEuNjItMTEuODY3IDIuMzA2LTE3LjQxNiAxLjc3NXpNOC4xODQgNjcuNzAzYy00LjAxNC02LjE1OC02LjA0Mi0xMi4yMi03LjAyLTIwLjk4OC0uMzI0LTIuODk1LS4yMS00LjU1LjczMy0xMC40OTQgMS4xNzMtNy40IDUuMzktMTUuOTcgMTAuNDYtMjEuMjQgMi4xNTgtMi4yNCAyLjM1LTIuMyA0Ljk4Mi0xLjQxIDMuMTkgMS4wOCA2LjYgMy40MzYgMTEuODkgOC4yMmwzLjA5IDIuNzk0LTEuNjkgMi4wN2MtNy44MjggOS42MS0xNi4wOSAyMy4yNC0xOS4yIDMxLjY3LTEuNjkgNC41OC0yLjM3IDkuMTgtMS42NCAxMS4wOTUuNDkgMS4yOTQuMDQuODEyLTEuNjEtMS43MTR6bTcwLjQ1MyAxLjA0N2MuMzk3LTEuOTM2LS4xMDUtNS40OS0xLjI4LTkuMDc2LTIuNTQ1LTcuNzY1LTExLjA1NC0yMi4yMS0xOC44NjctMzIuMDMybC0yLjQ2LTMuMDkyIDIuNjYyLTIuNDQzYzMuNDc0LTMuMTkgNS44ODYtNS4xIDguNDktNi43MjMgMi4wNTMtMS4yOCA0Ljk4OC0yLjQxMyA2LjI1LTIuNDEzLjc3NyAwIDMuNTE2IDIuODUgNS43MjYgNS45NSAzLjQyNCA0LjggNS45NDIgMTAuNjMgNy4yMTggMTYuNjkuODI1IDMuOTIuODk0IDEyLjMuMTMzIDE2LjIxLS42MyAzLjIwOC0xLjk1IDcuMzY2LTMuMjMgMTAuMTg3LS45NyAyLjExMy0zLjM2IDYuMjE4LTQuNDEgNy41NTQtLjU0LjY4Ny0uNTQuNjg2LS4yNC0uNzk2ek00MC40NCAxMS41MDVDMzYuODM0IDkuNjc1IDMxLjI3MiA3LjcxIDI4LjIgNy4xOGMtMS4wNzYtLjE4NS0yLjkxMy0uMjktNC4wOC0uMjMtMi41MzYuMTI4LTIuNDIzLS4wMDQgMS42NDMtMS45MjUgMy4zOC0xLjU5NyA2LjItMi41MzYgMTAuMDMtMy4zNEM0MC4wOTguNzggNDguMTkzLjc3IDUyLjQzIDEuNjYzYzQuNTc1Ljk2NSA5Ljk2NCAyLjk3IDEzIDQuODRsLjkwNC41NTQtMi4wNy0uMTA0QzYwLjE0OCA2Ljc0NSA1NC4xNSA4LjQwOCA0Ny43MSAxMS41NGMtMS45NDIuOTQ2LTMuNjMgMS43LTMuNzU0IDEuNjgtLjEyMy0uMDI0LTEuNzA2LS43OTUtMy41Mi0xLjcxNXoiLz4KPC9zdmc+Cg==" x="100" y="108" width="200" height="200" preserveAspectRatio="xMidYMid meet"/>
+    
+  </g>
+
+  <!-- Hyper-glass rim -->
+  <rect x="1.5" y="1.5" width="397" height="397" rx="26.5" fill="none" stroke="url(#frame-xbox)" stroke-width="2"/>
+  <rect x="10" y="10" width="380" height="380" rx="22" fill="none" stroke="#ddb7ff" stroke-opacity="0.08" stroke-width="1"/>
+
+  <!-- Gorumin cyan accent (matches app icon) -->
+  <circle cx="348" cy="52" r="16" fill="#4cd7f6" fill-opacity="0.18"/>
+  <circle cx="348" cy="52" r="7" fill="#4cd7f6" filter="url(#glow-xbox)"/>
+</svg>

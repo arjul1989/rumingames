@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 
+import { fundingLabels } from "@lib/i18n/es-co"
+
 type PaymentStatus = "pending" | "approved" | "rejected" | "refunded"
 
 // Polls the normalized payment status after a pending Mercado Pago checkout
@@ -11,11 +13,13 @@ type PaymentStatus = "pending" | "approved" | "rejected" | "refunded"
 export default function PaymentStatusPoller({
   orderId,
   countryCode,
+  isLoggedIn = false,
   intervalMs = 4000,
   maxAttempts = 45,
 }: {
   orderId: string
   countryCode: string
+  isLoggedIn?: boolean
   intervalMs?: number
   maxAttempts?: number
 }) {
@@ -73,9 +77,9 @@ export default function PaymentStatusPoller({
   if (exhausted) {
     return (
       <p className="text-sm text-on-surface-variant/70">
-        El pago sigue procesándose. Te enviaremos un correo cuando se confirme;
-        también puedes revisar el estado en{" "}
-        <span className="text-secondary">Mis pedidos</span>.
+        {isLoggedIn
+          ? fundingLabels.checkoutPendingExhaustedLoggedIn
+          : fundingLabels.checkoutPendingExhaustedGuest}
       </p>
     )
   }

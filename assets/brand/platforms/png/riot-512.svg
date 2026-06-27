@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 400 400" role="img" aria-label="riot">
+  
+      <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="400" y2="400">
+          <stop stop-color="#111118"/>
+          <stop offset="1" stop-color="#d13639"/>
+        </linearGradient>
+      </defs>
+      <rect width="400" height="400" rx="20" fill="url(#bg)"/>
+      <path d="M0 320 L400 260 L400 400 L0 400 Z" fill="#000000" fill-opacity="0.25"/>
+    
+  <image xlink:href="data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjRkZGRkZGIiByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+UmlvdCBHYW1lczwvdGl0bGU+PHBhdGggZD0iTTEzLjQ1OC44NiAwIDcuMDkzbDMuMzUzIDEyLjc2MSAyLjU1Mi0uMzEzLS43MDEtOC4wMjQuODM4LS4zNzMgMS40NDcgOC4yMDIgNC4zNjEtLjUzNS0uNzc1LTguODU3LjgzLS4zNyAxLjU5MSA5LjAyNSA0LjQxMi0uNTQyLS44NDktOS43MDguODQtLjM3NCAxLjc0IDkuODdMMjQgMTcuMzE4VjMuNVptLjMxNiAxOS4zNTYuMjIyIDEuMjU2TDI0IDIzLjE0di00LjE4bC0xMC4yMiAxLjI1NloiLz48L3N2Zz4=" x="80" y="110" width="240" height="240" preserveAspectRatio="xMidYMid meet"/>
+  
+</svg>

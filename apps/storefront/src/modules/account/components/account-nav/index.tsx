@@ -5,12 +5,24 @@ import { clx } from "@modules/common/components/ui"
 import { useParams, usePathname } from "next/navigation"
 
 import { signout } from "@lib/data/customer"
+import { accountLabels } from "@lib/i18n/es-co"
+import { displayCustomerGreeting } from "@lib/customer-display"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import ChevronDown from "@modules/common/icons/chevron-down"
-import MapPin from "@modules/common/icons/map-pin"
+import CreditCard from "@modules/common/icons/credit-card"
 import Package from "@modules/common/icons/package"
 import User from "@modules/common/icons/user"
+
+const NAV_ITEMS = [
+  { href: "/account/profile", label: accountLabels.myData, icon: User },
+  { href: "/account/orders", label: accountLabels.myPurchases, icon: Package },
+  {
+    href: "/account/payment-methods",
+    label: accountLabels.paymentMethods,
+    icon: CreditCard,
+  },
+] as const
 
 const AccountNav = ({
   customer,
@@ -24,147 +36,88 @@ const AccountNav = ({
     await signout(countryCode)
   }
 
+  const accountRoot = `/${countryCode}/account`
+
   return (
     <div>
       <div className="small:hidden" data-testid="mobile-account-nav">
-        {route !== `/${countryCode}/account` ? (
+        {route !== accountRoot ? (
           <LocalizedClientLink
-            href="/account"
-            className="flex items-center gap-x-2 text-small-regular py-2"
+            href="/account/orders"
+            className="flex items-center gap-x-2 py-2 text-small-regular"
             data-testid="account-main-link"
           >
-            <>
-              <ChevronDown className="transform rotate-90" />
-              <span>Mi cuenta</span>
-            </>
+            <ChevronDown className="rotate-90 transform" />
+            <span>{accountLabels.account}</span>
           </LocalizedClientLink>
         ) : (
           <>
             <div className="text-xl-semi mb-4 px-8">
-              Hola {customer?.first_name}
+              {displayCustomerGreeting(customer?.first_name)}
             </div>
-            <div className="text-base-regular">
-              <ul>
-                <li>
+            <ul className="text-base-regular">
+              {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+                <li key={href}>
                   <LocalizedClientLink
-                    href="/account/profile"
-                    className="flex items-center justify-between py-4 border-b border-white/10 px-8"
-                    data-testid="profile-link"
-                  >
-                    <>
-                      <div className="flex items-center gap-x-2">
-                        <User size={20} />
-                        <span>Perfil</span>
-                      </div>
-                      <ChevronDown className="transform -rotate-90" />
-                    </>
-                  </LocalizedClientLink>
-                </li>
-                <li>
-                  <LocalizedClientLink
-                    href="/account/addresses"
-                    className="flex items-center justify-between py-4 border-b border-white/10 px-8"
-                    data-testid="addresses-link"
-                  >
-                    <>
-                      <div className="flex items-center gap-x-2">
-                        <MapPin size={20} />
-                        <span>Direcciones</span>
-                      </div>
-                      <ChevronDown className="transform -rotate-90" />
-                    </>
-                  </LocalizedClientLink>
-                </li>
-                <li>
-                  <LocalizedClientLink
-                    href="/account/orders"
-                    className="flex items-center justify-between py-4 border-b border-white/10 px-8"
-                    data-testid="orders-link"
+                    href={href}
+                    className="flex items-center justify-between border-b border-white/10 px-8 py-4"
+                    data-testid={`${href.split("/").pop()}-link`}
                   >
                     <div className="flex items-center gap-x-2">
-                      <Package size={20} />
-                      <span>Órdenes</span>
+                      <Icon size={20} />
+                      <span>{label}</span>
                     </div>
-                    <ChevronDown className="transform -rotate-90" />
+                    <ChevronDown className="-rotate-90 transform" />
                   </LocalizedClientLink>
                 </li>
-                <li>
-                  <button
-                    type="button"
-                    className="flex items-center justify-between py-4 border-b border-white/10 px-8 w-full"
-                    onClick={handleLogout}
-                    data-testid="logout-button"
-                  >
-                    <div className="flex items-center gap-x-2">
-                      <ArrowRightOnRectangle />
-                      <span>Cerrar sesión</span>
-                    </div>
-                    <ChevronDown className="transform -rotate-90" />
-                  </button>
-                </li>
-              </ul>
-            </div>
-          </>
-        )}
-      </div>
-      <div className="hidden small:block" data-testid="account-nav">
-        <div>
-          <div className="pb-4">
-            <h3 className="font-mono text-label-caps tracking-widest text-on-surface-variant/60">
-              MI CUENTA
-            </h3>
-          </div>
-          <div className="text-base-regular">
-            <ul className="flex mb-0 justify-start items-start flex-col gap-y-4">
-              <li>
-                <AccountNavLink
-                  href="/account"
-                  route={route!}
-                  data-testid="overview-link"
-                >
-                  Resumen
-                </AccountNavLink>
-              </li>
-              <li>
-                <AccountNavLink
-                  href="/account/profile"
-                  route={route!}
-                  data-testid="profile-link"
-                >
-                  Perfil
-                </AccountNavLink>
-              </li>
-              <li>
-                <AccountNavLink
-                  href="/account/addresses"
-                  route={route!}
-                  data-testid="addresses-link"
-                >
-                  Direcciones
-                </AccountNavLink>
-              </li>
-              <li>
-                <AccountNavLink
-                  href="/account/orders"
-                  route={route!}
-                  data-testid="orders-link"
-                >
-                  Órdenes
-                </AccountNavLink>
-              </li>
+              ))}
               <li>
                 <button
                   type="button"
-                  className="text-on-surface-variant/70 transition-colors hover:text-error"
+                  className="flex w-full items-center justify-between border-b border-white/10 px-8 py-4"
                   onClick={handleLogout}
                   data-testid="logout-button"
                 >
-                  Cerrar sesión
+                  <div className="flex items-center gap-x-2">
+                    <ArrowRightOnRectangle />
+                    <span>{accountLabels.signOut}</span>
+                  </div>
+                  <ChevronDown className="-rotate-90 transform" />
                 </button>
               </li>
             </ul>
-          </div>
+          </>
+        )}
+      </div>
+
+      <div className="hidden small:block" data-testid="account-nav">
+        <div className="pb-4">
+          <h3 className="font-mono text-label-caps tracking-widest text-on-surface-variant/60">
+            {accountLabels.account}
+          </h3>
+          <p className="mt-2 text-sm text-on-surface-variant/70">
+            {displayCustomerGreeting(customer?.first_name)}
+          </p>
         </div>
+        <ul className="mb-0 flex flex-col items-start justify-start gap-y-3">
+          {NAV_ITEMS.map(({ href, label }) => (
+            <li key={href}>
+              <AccountNavLink href={href} route={route!} data-testid={`${href.split("/").pop()}-link`}>
+                {label}
+              </AccountNavLink>
+            </li>
+          ))}
+          <li className="mt-4 border-t border-white/10 pt-4">
+            <button
+              type="button"
+              className="text-on-surface-variant/70 transition-colors hover:text-error"
+              onClick={handleLogout}
+              data-testid="logout-button"
+            >
+              {accountLabels.signOut}
+            </button>
+          </li>
+        </ul>
       </div>
     </div>
   )
@@ -184,14 +137,17 @@ const AccountNavLink = ({
   "data-testid": dataTestId,
 }: AccountNavLinkProps) => {
   const { countryCode }: { countryCode: string } = useParams()
-
   const active = route.split(countryCode)[1] === href
+
   return (
     <LocalizedClientLink
       href={href}
-      className={clx("text-on-surface-variant/70 transition-colors hover:text-on-surface", {
-        "font-semibold text-primary": active,
-      })}
+      className={clx(
+        "block w-full rounded-lg px-3 py-2 text-sm transition-colors",
+        active
+          ? "bg-primary/15 font-semibold text-primary"
+          : "text-on-surface-variant/70 hover:bg-white/5 hover:text-on-surface"
+      )}
       data-testid={dataTestId}
     >
       {children}

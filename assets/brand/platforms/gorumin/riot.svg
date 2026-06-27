@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 400 400" role="img" aria-label="Riot Points (Valorant / LoL)">
+  <defs>
+    
+      <linearGradient id="bg-riot" x1="0" y1="0" x2="400" y2="400">
+        <stop stop-color="#0c0c12"/>
+        <stop offset="0.55" stop-color="#1a1a24"/>
+        <stop offset="1" stop-color="#d13639"/>
+      </linearGradient>
+      <radialGradient id="shine-riot" cx="90%" cy="90%" r="45%">
+        <stop stop-color="#d13639" stop-opacity="0.35"/>
+        <stop offset="1" stop-color="#d13639" stop-opacity="0"/>
+      </radialGradient>
+    <linearGradient id="frame-riot" x1="0" y1="0" x2="400" y2="400">
+      <stop stop-color="#ddb7ff" stop-opacity="0.35"/>
+      <stop offset="0.5" stop-color="#4d4354" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#4cd7f6" stop-opacity="0.25"/>
+    </linearGradient>
+    <filter id="glow-riot" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="clip-riot"><rect width="400" height="400" rx="28"/></clipPath>
+  </defs>
+
+  <!-- Gorumin dark base -->
+  <rect width="400" height="400" rx="28" fill="#0b1326"/>
+
+  <g clip-path="url(#clip-riot)">
+    <rect width="400" height="400" fill="url(#bg-riot)"/>
+    <rect width="400" height="400" fill="url(#shine-riot)"/>
+    <ellipse cx="200" cy="390" rx="170" ry="50" fill="#b76dff" fill-opacity="0.1"/>
+    <image xlink:href="data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjRkZGRkZGIiByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+UmlvdCBHYW1lczwvdGl0bGU+PHBhdGggZD0iTTEzLjQ1OC44NiAwIDcuMDkzbDMuMzUzIDEyLjc2MSAyLjU1Mi0uMzEzLS43MDEtOC4wMjQuODM4LS4zNzMgMS40NDcgOC4yMDIgNC4zNjEtLjUzNS0uNzc1LTguODU3LjgzLS4zNyAxLjU5MSA5LjAyNSA0LjQxMi0uNTQyLS44NDktOS43MDguODQtLjM3NCAxLjc0IDkuODdMMjQgMTcuMzE4VjMuNVptLjMxNiAxOS4zNTYuMjIyIDEuMjU2TDI0IDIzLjE0di00LjE4bC0xMC4yMiAxLjI1NloiLz48L3N2Zz4=" x="90" y="118" width="220" height="220" preserveAspectRatio="xMidYMid meet"/>
+    
+  </g>
+
+  <!-- Hyper-glass rim -->
+  <rect x="1.5" y="1.5" width="397" height="397" rx="26.5" fill="none" stroke="url(#frame-riot)" stroke-width="2"/>
+  <rect x="10" y="10" width="380" height="380" rx="22" fill="none" stroke="#ddb7ff" stroke-opacity="0.08" stroke-width="1"/>
+
+  <!-- Gorumin cyan accent (matches app icon) -->
+  <circle cx="348" cy="52" r="16" fill="#4cd7f6" fill-opacity="0.18"/>
+  <circle cx="348" cy="52" r="7" fill="#4cd7f6" filter="url(#glow-riot)"/>
+</svg>

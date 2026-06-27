@@ -6,6 +6,9 @@ import { absoluteUrl, localizedAlternates, SITE_NAME } from "@lib/seo"
 import { getProductPrice } from "@lib/util/get-product-price"
 import ProductTemplate from "@modules/gorumin/templates/product"
 import JsonLd from "@modules/common/components/json-ld"
+import { filterStorefrontProducts } from "@lib/storefront-catalog"
+
+export const revalidate = 30
 
 type Props = {
   params: Promise<{ countryCode: string; handle: string }>
@@ -74,11 +77,11 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 
   return {
     title: product.title,
-    description: product.description ?? `${product.title} en Gorumin`,
+    description: product.description ?? `${product.title} en ${SITE_NAME}`,
     alternates: localizedAlternates(`products/${handle}`),
     openGraph: {
-      title: `${product.title} — Gorumin`,
-      description: product.description ?? `${product.title} en Gorumin`,
+      title: `${product.title} — ${SITE_NAME}`,
+      description: product.description ?? `${product.title} en ${SITE_NAME}`,
       type: "website",
       url: absoluteUrl(`co/products/${handle}`),
       images: product.thumbnail ? [product.thumbnail] : [],
@@ -94,10 +97,14 @@ export default async function ProductPage(props: Props) {
     notFound()
   }
 
-  const pricedProduct = await listProducts({
-    countryCode: params.countryCode,
-    queryParams: { handle: params.handle },
-  }).then(({ response }) => response.products[0])
+  const pricedProduct = filterStorefrontProducts(
+    (
+      await listProducts({
+        countryCode: params.countryCode,
+        queryParams: { handle: params.handle },
+      })
+    ).response.products
+  )[0]
 
   if (!pricedProduct) {
     notFound()

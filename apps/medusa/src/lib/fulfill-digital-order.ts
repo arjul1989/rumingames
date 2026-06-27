@@ -1,6 +1,9 @@
 import { MedusaContainer } from "@medusajs/framework"
-import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { emitMonitorAlert } from "./monitoring"
+import { sendEmail } from "./email/send-email"
+import { storefrontUrl } from "./storefront-url"
+import { logSupportTrace } from "./support/log-support-trace"
 import { SUPPLIER_MODULE } from "../modules/supplier"
 import { FAZER_MODULE } from "../modules/fazer"
 import { DIGITAL_DELIVERY_MODULE } from "../modules/digital-delivery"
@@ -9,8 +12,46 @@ import type DigitalDeliveryModuleService from "../modules/digital-delivery/servi
 import type { FazerCreateOrderInput, FazerOrder } from "../modules/fazer/lib/types"
 
 const MAX_ATTEMPTS = 3
-const POLL_ATTEMPTS = 5
-const POLL_DELAY_MS = 1500
+const POLL_ATTEMPTS = 15
+const POLL_DELAY_MS = 2000
+
+const FAZER_IN_PROGRESS_STATUSES = new Set([
+  "created",
+  "pending",
+  "processing",
+])
+
+export function isFazerOrderInProgress(status: string): boolean {
+  return FAZER_IN_PROGRESS_STATUSES.has(status)
+}
+
+type LineItemLike = {
+  quantity?: unknown
+  raw_quantity?: { value?: string } | null
+  detail?: {
+    quantity?: unknown
+    raw_quantity?: { value?: string } | null
+  } | null
+}
+
+/** Medusa graph `items.quantity` can be unset; REST/store still exposes quantity on detail. */
+export function resolveLineItemQuantity(item: LineItemLike): number {
+  const candidates = [
+    item.quantity,
+    item.detail?.quantity,
+    item.raw_quantity?.value,
+    item.detail?.raw_quantity?.value,
+  ]
+  for (const value of candidates) {
+    if (value == null) continue
+    const n =
+      typeof value === "object" && value !== null && "value" in value
+        ? Number((value as { value: string }).value)
+        : Number(value)
+    if (Number.isFinite(n) && n > 0) return Math.floor(n)
+  }
+  return 1
+}
 
 // Minimal Fazer surface needed for fulfillment; lets tests inject a fake.
 export interface FazerLike {
@@ -46,7 +87,6 @@ export async function fulfillDigitalOrder(
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const supplier = container.resolve<SupplierModuleService>(SUPPLIER_MODULE)
   const delivery = container.resolve<DigitalDeliveryModuleService>(DIGITAL_DELIVERY_MODULE)
-  const notification = container.resolve(Modules.NOTIFICATION)
   const sleep = options.sleepImpl ?? defaultSleep
 
   const fazer: FazerLike =
@@ -60,6 +100,9 @@ export async function fulfillDigitalOrder(
       "display_id",
       "items.id",
       "items.quantity",
+      "items.raw_quantity",
+      "items.detail.quantity",
+      "items.detail.raw_quantity",
       "items.variant_id",
       "items.title",
       "items.metadata",
@@ -74,7 +117,12 @@ export async function fulfillDigitalOrder(
 
   const items = (order.items ?? []) as Array<{
     id: string
-    quantity: number
+    quantity?: unknown
+    raw_quantity?: { value?: string } | null
+    detail?: {
+      quantity?: unknown
+      raw_quantity?: { value?: string } | null
+    } | null
     variant_id: string | null
     title: string
     metadata?: Record<string, unknown> | null
@@ -128,21 +176,41 @@ export async function fulfillDigitalOrder(
       try {
         let fazerOrder = await fazer.createOrder({
           sku_id: mapping.fazer_sku_id,
-          quantity: item.quantity,
+          quantity: resolveLineItemQuantity(item),
           idempotency_key: idempotencyKey,
           external_id: externalId,
+        })
+        await logSupportTrace(container, {
+          email: order.email ?? null,
+          order_id: orderId,
+          stage: "fazer_order",
+          label: "Crear orden Fazer",
+          endpoint: "POST /giftcards/order | /topups/order",
+          method: "POST",
+          request: {
+            sku_id: mapping.fazer_sku_id,
+            quantity: resolveLineItemQuantity(item),
+            idempotency_key: idempotencyKey,
+          },
+          response: fazerOrder,
         })
 
         // Poll until the supplier finishes provisioning the code.
         let polls = 0
-        while (
-          (fazerOrder.status === "pending" || fazerOrder.status === "processing") &&
-          polls < POLL_ATTEMPTS
-        ) {
+        while (isFazerOrderInProgress(fazerOrder.status) && polls < POLL_ATTEMPTS) {
           await sleep(POLL_DELAY_MS)
           fazerOrder = await fazer.getOrder(fazerOrder.id)
           polls++
         }
+        await logSupportTrace(container, {
+          email: order.email ?? null,
+          order_id: orderId,
+          stage: "fazer_order",
+          label: `Poll orden Fazer (${polls} intentos)`,
+          endpoint: `GET /orders/${fazerOrder.id}`,
+          method: "GET",
+          response: fazerOrder,
+        })
 
         if (fazerOrder.status !== "completed") {
           throw new Error(
@@ -158,10 +226,12 @@ export async function fulfillDigitalOrder(
 
         await delivery.storeCode(row.id, code, fazerOrder.id)
         await sendCustomerCode(
-          notification,
+          container,
           order.email ?? "",
           item.title,
-          order.display_id ?? undefined
+          code,
+          order.display_id ?? undefined,
+          orderId
         )
         delivered++
         success = true
@@ -182,7 +252,6 @@ export async function fulfillDigitalOrder(
       })
       await alertAdmin(
         container,
-        notification,
         order.display_id ?? undefined,
         item.title,
         lastError,
@@ -198,29 +267,34 @@ export async function fulfillDigitalOrder(
 }
 
 async function sendCustomerCode(
-  notification: { createNotifications: (n: unknown) => Promise<unknown> },
+  container: MedusaContainer,
   to: string,
   productTitle: string,
-  displayId?: number | string
+  code: string,
+  displayId?: number | string,
+  orderId?: string
 ) {
   if (!to) return
-  await notification.createNotifications({
+  const cc = "co"
+  const ordersUrl = orderId
+    ? storefrontUrl(`/account/orders/details/${orderId}`, cc)
+    : storefrontUrl("/account/orders", cc)
+
+  await sendEmail(container, {
     to,
-    channel: "email",
     template: "digital-code-delivered",
-    content: {
-      subject: `Tu código de ${productTitle} está listo`,
-      text:
-        `¡Gracias por tu compra! Tu código de "${productTitle}" ` +
-        `(orden #${displayId ?? ""}) ya está disponible en "Mis órdenes".`,
-    } as unknown as Record<string, unknown>,
-    data: { product: productTitle, display_id: displayId ?? "" },
+    data: {
+      product: productTitle,
+      display_id: displayId ?? "",
+      code,
+      orders_url: ordersUrl,
+      account_url: storefrontUrl("/account", cc),
+    },
   })
 }
 
 async function alertAdmin(
   container: MedusaContainer,
-  notification: { createNotifications: (n: unknown) => Promise<unknown> },
   displayId: number | string | undefined,
   productTitle: string,
   error: string,
@@ -234,14 +308,13 @@ async function alertAdmin(
   })
 
   const to = process.env.ADMIN_ALERT_EMAIL || "admin@gorumin.com"
-  await notification.createNotifications({
+  await sendEmail(container, {
     to,
-    channel: "email",
     template: "fulfillment-failed",
-    content: {
-      subject: `[Gorumin] Fallo de fulfillment en orden #${displayId ?? ""}`,
-      text: `No se pudo entregar "${productTitle}" tras ${MAX_ATTEMPTS} intentos. Error: ${error}`,
-    } as unknown as Record<string, unknown>,
-    data: { display_id: displayId ?? "", product: productTitle, error },
+    data: {
+      subject: `[rumin] Fallo de fulfillment en orden #${displayId ?? ""}`,
+      message: `No se pudo entregar "${productTitle}" tras ${MAX_ATTEMPTS} intentos.`,
+      details: `Orden: ${orderId}\nError: ${error}`,
+    },
   })
 }

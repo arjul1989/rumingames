@@ -1,7 +1,9 @@
 import { Suspense } from "react"
 
+import { retrieveCustomer } from "@lib/data/customer"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import CartButton from "@modules/layout/components/cart-button"
+import NavAccountActions from "@modules/layout/components/nav-account-actions"
 import MobileMenu from "@modules/gorumin/components/mobile-menu"
 
 // Gorumin global header (US-7.1 / RUM-37). Tienda first as primary CTA.
@@ -12,6 +14,8 @@ const NAV_LINKS = [
 ] as const
 
 export default async function Nav() {
+  const customer = await retrieveCustomer().catch(() => null)
+
   return (
     <div className="sticky top-0 inset-x-0 z-50">
       <header className="relative h-16 border-b border-white/10 bg-surface-dim/70 backdrop-blur-xl">
@@ -21,7 +25,7 @@ export default async function Nav() {
             className="font-display text-2xl font-extrabold tracking-tighter text-primary drop-shadow-[0_0_15px_rgba(221,183,255,0.6)]"
             data-testid="nav-store-link"
           >
-            GORUMIN
+            RUMIN
           </LocalizedClientLink>
 
           <div className="hidden items-center gap-gutter md:flex">
@@ -46,11 +50,12 @@ export default async function Nav() {
           </div>
 
           <div className="flex items-center gap-x-base">
+            <NavAccountActions customer={customer} />
             <LocalizedClientLink
               href="/account"
               aria-label="Mi cuenta"
-              className="material-symbols-outlined text-on-surface-variant transition-colors hover:text-primary"
-              data-testid="nav-account-link"
+              className="material-symbols-outlined text-on-surface-variant transition-colors hover:text-primary md:hidden"
+              data-testid="nav-account-icon-mobile"
             >
               account_circle
             </LocalizedClientLink>
@@ -67,7 +72,7 @@ export default async function Nav() {
             >
               <CartButton />
             </Suspense>
-            <MobileMenu />
+            <MobileMenu customer={customer} />
           </div>
         </nav>
       </header>

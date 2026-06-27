@@ -292,7 +292,7 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
       <tr
         ref={ref}
         className={clsx(
-          "border-b transition-colors hover:bg-gray-50",
+          "border-b transition-colors hover:bg-white/5",
           className
         )}
         {...props}

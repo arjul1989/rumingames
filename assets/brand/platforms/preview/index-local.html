@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Gorumin — Preview tarjetas plataforma</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0b1326;
+      color: #e8e0f0;
+      padding: 2rem;
+      min-height: 100vh;
+    }
+    h1 {
+      font-size: 1.75rem;
+      background: linear-gradient(135deg, #ddb7ff, #4cd7f6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.25rem;
+    }
+    .sub { color: #9a8faa; font-size: 0.9rem; margin-bottom: 2rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 2rem;
+    }
+    .card {
+      background: rgba(19, 27, 46, 0.6);
+      border: 1px solid rgba(221, 183, 255, 0.12);
+      border-radius: 16px;
+      padding: 1.25rem;
+    }
+    .card h2 { font-size: 0.7rem; letter-spacing: 0.15em; color: #4cd7f6; margin-bottom: 0.75rem; text-transform: uppercase; }
+    .card h3 { font-size: 1rem; margin-bottom: 1rem; color: #ddb7ff; }
+    .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .compare > div { text-align: center; }
+    .compare img, .compare object {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 12px;
+      object-fit: cover;
+      background: #131b2e;
+    }
+    .label { font-size: 0.65rem; letter-spacing: 0.1em; color: #6b6080; margin-top: 0.4rem; text-transform: uppercase; }
+    .badge {
+      display: inline-block;
+      margin-top: 2rem;
+      padding: 0.5rem 1rem;
+      border-radius: 999px;
+      background: rgba(76, 215, 246, 0.1);
+      border: 1px solid rgba(76, 215, 246, 0.3);
+      color: #4cd7f6;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Preview — Tarjetas plataforma Gorumin</h1>
+  <p class="sub">Comparación: actual (PNG) vs propuesta SVG con toque Gorumin. Sin cambios en producción hasta aprobación.</p>
+  <div class="grid">
+    <div class="card">
+      <h2>steam</h2>
+      <h3>Steam Gift Card</h3>
+      <div class="compare">
+        <div>
+          <img src="../../../apps/storefront/public/platforms/steam.png" alt="Actual steam"/>
+          <div class="label">Actual (PNG)</div>
+        </div>
+        <div>
+          <object type="image/svg+xml" data="../gorumin/steam.svg" aria-label="Propuesta steam"></object>
+          <div class="label">Propuesta (SVG Gorumin)</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>playstation</h2>
+      <h3>PlayStation Store Gift Card</h3>
+      <div class="compare">
+        <div>
+          <img src="../../../apps/storefront/public/platforms/playstation.png" alt="Actual playstation"/>
+          <div class="label">Actual (PNG)</div>
+        </div>
+        <div>
+          <object type="image/svg+xml" data="../gorumin/playstation.svg" aria-label="Propuesta playstation"></object>
+          <div class="label">Propuesta (SVG Gorumin)</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>xbox</h2>
+      <h3>Xbox Game Pass Ultimate</h3>
+      <div class="compare">
+        <div>
+          <img src="../../../apps/storefront/public/platforms/xbox.png" alt="Actual xbox"/>
+          <div class="label">Actual (PNG)</div>
+        </div>
+        <div>
+          <object type="image/svg+xml" data="../gorumin/xbox.svg" aria-label="Propuesta xbox"></object>
+          <div class="label">Propuesta (SVG Gorumin)</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>nintendo</h2>
+      <h3>Nintendo eShop Gift Card</h3>
+      <div class="compare">
+        <div>
+          <img src="../../../apps/storefront/public/platforms/nintendo.png" alt="Actual nintendo"/>
+          <div class="label">Actual (PNG)</div>
+        </div>
+        <div>
+          <object type="image/svg+xml" data="../gorumin/nintendo.svg" aria-label="Propuesta nintendo"></object>
+          <div class="label">Propuesta (SVG Gorumin)</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>riot</h2>
+      <h3>Riot Points (Valorant / LoL)</h3>
+      <div class="compare">
+        <div>
+          <img src="../../../apps/storefront/public/platforms/riot.png" alt="Actual riot"/>
+          <div class="label">Actual (PNG)</div>
+        </div>
+        <div>
+          <object type="image/svg+xml" data="../gorumin/riot.svg" aria-label="Propuesta riot"></object>
+          <div class="label">Propuesta (SVG Gorumin)</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>free fire</h2>
+      <h3>Free Fire Diamantes</h3>
+      <div class="compare">
+        <div>
+          <img src="../../../apps/storefront/public/platforms/free-fire.png" alt="Actual free-fire"/>
+          <div class="label">Actual (PNG)</div>
+        </div>
+        <div>
+          <object type="image/svg+xml" data="../gorumin/free-fire.svg" aria-label="Propuesta free-fire"></object>
+          <div class="label">Propuesta (SVG Gorumin)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="badge">Toque Gorumin: borde hyper-glass púrpura/cyan · punto cyan · glow inferior · logos oficiales</p>
+</body>
+</html>

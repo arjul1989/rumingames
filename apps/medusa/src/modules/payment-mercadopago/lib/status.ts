@@ -1,5 +1,6 @@
 import { PaymentSessionStatus, PaymentActions } from "@medusajs/framework/utils"
 import type { MpPaymentStatus } from "./types"
+import { isAsyncMpPaymentMethod } from "./build-payment-payload"
 
 // Maps a Mercado Pago payment status to a Medusa payment-session status.
 // Used by getPaymentStatus/authorizePayment to keep state in sync.
@@ -24,6 +25,25 @@ export function mpStatusToSessionStatus(
     default:
       return PaymentSessionStatus.PENDING
   }
+}
+
+/**
+ * Medusa cart completion only accepts AUTHORIZED/CAPTURED sessions.
+ * PSE/Efecty create MP payments in `pending` until the buyer finishes at the bank;
+ * treat a successful create as authorized so we can place the order and redirect.
+ */
+export function medusaAuthorizeStatusFromMpPayment(payment: {
+  status: MpPaymentStatus
+  payment_method_id?: string
+}): PaymentSessionStatus {
+  const mapped = mpStatusToSessionStatus(payment.status)
+  if (
+    mapped === PaymentSessionStatus.PENDING &&
+    isAsyncMpPaymentMethod(payment.payment_method_id)
+  ) {
+    return PaymentSessionStatus.AUTHORIZED
+  }
+  return mapped
 }
 
 // Maps a Mercado Pago payment status to the webhook action Medusa should take

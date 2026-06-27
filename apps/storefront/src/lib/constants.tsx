@@ -35,7 +35,7 @@ export const paymentInfoMap: Record<
     icon: <CreditCard />,
   },
   pp_mercadopago_mercadopago: {
-    title: "Tarjeta de crédito o débito",
+    title: "Mercado Pago (tarjeta, PSE, Efecty)",
     icon: <CreditCard />,
   },
   // Add more payment providers here

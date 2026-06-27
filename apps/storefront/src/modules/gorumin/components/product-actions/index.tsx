@@ -17,6 +17,49 @@ const optionsAsKeymap = (
     return acc
   }, {})
 
+import { isStorefrontPurchasableVariant } from "@lib/storefront-catalog"
+
+type VariantWithPrice = HttpTypes.StoreProductVariant & {
+  calculated_price?: { calculated_amount?: number }
+  metadata?: Record<string, unknown> | null
+}
+
+type OptionChoice = {
+  optionId: string
+  title: string
+  value: string
+  sortPrice: number
+}
+
+function buildOptionChoices(product: HttpTypes.StoreProduct): OptionChoice[] {
+  const purchasable = (product.variants ?? []).filter((v) =>
+    isStorefrontPurchasableVariant(v as VariantWithPrice)
+  ) as VariantWithPrice[]
+
+  const choices = new Map<string, OptionChoice>()
+
+  for (const variant of purchasable) {
+    const price = variant.calculated_price?.calculated_amount ?? 0
+    for (const opt of variant.options ?? []) {
+      if (!opt.option_id) continue
+      const title =
+        product.options?.find((o) => o.id === opt.option_id)?.title ?? "Opción"
+      const key = `${opt.option_id}::${opt.value}`
+      const existing = choices.get(key)
+      if (!existing || price < existing.sortPrice) {
+        choices.set(key, {
+          optionId: opt.option_id,
+          title,
+          value: opt.value,
+          sortPrice: price,
+        })
+      }
+    }
+  }
+
+  return [...choices.values()].sort((a, b) => a.sortPrice - b.sortPrice)
+}
+
 // Variant selector + add-to-cart with the Gorumin look (US-7.5). Collects a
 // player id for top-up products (delivery_type = topup_id) before adding.
 export default function ProductActions({
@@ -34,17 +77,34 @@ export default function ProductActions({
 
   const needsPlayerId = requiresPlayerId(product)
 
-  useEffect(() => {
-    if (product.variants?.length === 1) {
-      setOptions(optionsAsKeymap(product.variants[0].options) ?? {})
+  const optionChoices = useMemo(() => buildOptionChoices(product), [product])
+
+  const choicesByOption = useMemo(() => {
+    const grouped = new Map<string, { title: string; values: OptionChoice[] }>()
+    for (const choice of optionChoices) {
+      const group = grouped.get(choice.optionId) ?? {
+        title: choice.title,
+        values: [],
+      }
+      group.values.push(choice)
+      grouped.set(choice.optionId, group)
     }
-  }, [product.variants])
+    return grouped
+  }, [optionChoices])
+
+  useEffect(() => {
+    if (optionChoices.length === 1) {
+      const only = optionChoices[0]
+      setOptions({ [only.optionId]: only.value })
+    }
+  }, [optionChoices])
 
   const selectedVariant = useMemo(() => {
     if (!product.variants?.length) return undefined
-    return product.variants.find((v) =>
-      isEqual(optionsAsKeymap(v.options), options)
-    )
+    return product.variants.find((v) => {
+      if (!isStorefrontPurchasableVariant(v as VariantWithPrice)) return false
+      return isEqual(optionsAsKeymap(v.options), options)
+    })
   }, [product.variants, options])
 
   const setOptionValue = (optionId: string, value: string) => {
@@ -89,26 +149,26 @@ export default function ProductActions({
 
   return (
     <div className="flex flex-col gap-6">
-      {(product.options || []).map((option) => (
-        <div key={option.id} className="flex flex-col gap-3">
+      {[...choicesByOption.entries()].map(([optionId, group]) => (
+        <div key={optionId} className="flex flex-col gap-3">
           <span className="font-mono text-label-caps tracking-widest text-on-surface-variant/70">
-            {option.title?.toUpperCase()}
+            {group.title?.toUpperCase()}
           </span>
           <div className="flex flex-wrap gap-2">
-            {(option.values ?? []).map((value) => {
-              const active = options[option.id] === value.value
+            {group.values.map((choice) => {
+              const active = options[optionId] === choice.value
               return (
                 <button
-                  key={value.value}
+                  key={`${optionId}-${choice.value}`}
                   type="button"
-                  onClick={() => setOptionValue(option.id, value.value)}
+                  onClick={() => setOptionValue(optionId, choice.value)}
                   className={
                     active
                       ? "rounded-lg border border-secondary bg-secondary/10 px-4 py-3 font-mono text-sm text-secondary"
                       : "rounded-lg border border-white/10 bg-surface-container/50 px-4 py-3 font-mono text-sm text-on-surface transition-colors hover:border-secondary/60"
                   }
                 >
-                  {value.value}
+                  {choice.value}
                 </button>
               )
             })}

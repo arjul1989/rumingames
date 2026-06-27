@@ -143,4 +143,30 @@ export const CATALOG: CatalogProduct[] = [
       { label: "3 meses", sku: "XGP-CO-3M", cop: 120000, face_value_usd: 30 },
     ],
   },
+  {
+    title: "Xbox Gift Card",
+    handle: "xbox-gift-card",
+    platform: "xbox",
+    product_type: "gift_card",
+    delivery_type: "digital_code",
+    description:
+      "Saldo para Microsoft Store y Xbox. Canjea el código en tu cuenta Microsoft.",
+    option_title: "Valor",
+    variants: [
+      { label: "10 USD", sku: "XBOX-CO-10000", cop: 42000, face_value_usd: 10 },
+    ],
+  },
+  {
+    title: "Créditos Xbox",
+    handle: "xbox-game-credits",
+    platform: "xbox",
+    product_type: "game_topup",
+    delivery_type: "digital_code",
+    description:
+      "Créditos y moneda virtual para juegos en Xbox: Apex, Call of Duty, EA FC, Halo y más.",
+    option_title: "Paquete",
+    variants: [
+      { label: "Básico", sku: "XBOX-CR-PLACEHOLDER", cop: 10000, face_value_usd: 3 },
+    ],
+  },
 ]

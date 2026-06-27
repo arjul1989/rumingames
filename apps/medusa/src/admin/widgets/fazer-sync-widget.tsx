@@ -54,7 +54,11 @@ const FazerSyncWidget = () => {
       })
       const data = (await res.json()) as SyncLog
       setLast(data)
-      toast.success(`Sync ${data.status}: ${data.message ?? ""}`)
+      if (data.status === "failed") {
+        toast.error(data.message ?? "La sincronización falló.")
+      } else {
+        toast.success(data.message ?? `Sync ${data.status}`)
+      }
     } catch (e) {
       toast.error(`Error al sincronizar: ${(e as Error).message}`)
     } finally {

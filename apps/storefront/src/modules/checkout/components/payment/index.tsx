@@ -1,6 +1,6 @@
 "use client"
 import { RadioGroup } from "@headlessui/react"
-import { isStripeLike, paymentInfoMap } from "@lib/constants"
+import { isStripeLike, isMercadoPago, paymentInfoMap } from "@lib/constants"
 import { initiatePaymentSession } from "@lib/data/cart"
 import { CheckCircleSolid, CreditCard } from "@medusajs/icons"
 import ErrorMessage from "@modules/checkout/components/error-message"
@@ -47,7 +47,7 @@ const Payment = ({
   const setPaymentMethod = async (method: string) => {
     setError(null)
     setSelectedPaymentMethod(method)
-    if (isStripeLike(method)) {
+    if (isStripeLike(method) || isMercadoPago(method)) {
       await initiatePaymentSession(cart, {
         provider_id: method,
       })
@@ -83,6 +83,9 @@ const Payment = ({
       const shouldInputCard =
         isStripeLike(selectedPaymentMethod) && !activeSession
 
+      const needsMpSession =
+        isMercadoPago(selectedPaymentMethod) && !activeSession
+
       const checkActiveSession =
         activeSession?.provider_id === selectedPaymentMethod
 
@@ -92,7 +95,7 @@ const Payment = ({
         })
       }
 
-      if (!shouldInputCard) {
+      if (!shouldInputCard && !needsMpSession) {
         return router.push(
           pathname + "?" + createQueryString("step", "review"),
           {
@@ -192,7 +195,7 @@ const Payment = ({
 
           <Button
             size="large"
-            className="mt-6"
+            className="checkout-cta mt-6"
             onClick={handleSubmit}
             isLoading={isLoading}
             disabled={

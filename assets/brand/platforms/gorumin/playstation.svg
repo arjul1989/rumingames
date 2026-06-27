@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 400 400" role="img" aria-label="PlayStation Store Gift Card">
+  <defs>
+    
+      <linearGradient id="bg-playstation" x1="0" y1="0" x2="400" y2="400">
+        <stop stop-color="#000d3a"/>
+        <stop offset="0.6" stop-color="#003791"/>
+        <stop offset="1" stop-color="#0070d1"/>
+      </linearGradient>
+      <radialGradient id="shine-playstation" cx="80%" cy="10%" r="50%">
+        <stop stop-color="#ddb7ff" stop-opacity="0.12"/>
+        <stop offset="1" stop-color="#ddb7ff" stop-opacity="0"/>
+      </radialGradient>
+    <linearGradient id="frame-playstation" x1="0" y1="0" x2="400" y2="400">
+      <stop stop-color="#ddb7ff" stop-opacity="0.35"/>
+      <stop offset="0.5" stop-color="#4d4354" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#4cd7f6" stop-opacity="0.25"/>
+    </linearGradient>
+    <filter id="glow-playstation" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="clip-playstation"><rect width="400" height="400" rx="28"/></clipPath>
+  </defs>
+
+  <!-- Gorumin dark base -->
+  <rect width="400" height="400" rx="28" fill="#0b1326"/>
+
+  <g clip-path="url(#clip-playstation)">
+    <rect width="400" height="400" fill="url(#bg-playstation)"/>
+    <rect width="400" height="400" fill="url(#shine-playstation)"/>
+    <ellipse cx="200" cy="390" rx="170" ry="50" fill="#b76dff" fill-opacity="0.1"/>
+    <image xlink:href="data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjRkZGRkZGIiByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+UGxheVN0YXRpb248L3RpdGxlPjxwYXRoIGQ9Ik04Ljk4NCAyLjU5NnYxNy41NDdsMy45MTUgMS4yNjFWNi42ODhjMC0uNjkuMzA0LTEuMTUxLjc5NC0uOTkxLjYzNi4xOC43Ni44MTQuNzYgMS41MDV2NS44NzVjMi40NDEgMS4xOTMgNC4zNjItLjAwMiA0LjM2Mi0zLjE1MiAwLTMuMjM3LTEuMTI2LTQuNjc1LTQuNDM4LTUuODI3LTEuMzA3LS40NDgtMy43MjgtMS4xODYtNS4zOS0xLjUwMnptNC42NTYgMTYuMjQxbDYuMjk2LTIuMjc1Yy43MTUtLjI1OC44MjYtLjYyNS4yNDYtLjgxOC0uNTg2LS4xOTItMS42MzctLjEzOS0yLjM1Ny4xMjNsLTQuMjA1IDEuNVYxNC45OGwuMjQtLjA4NXMxLjIwMS0uNDIgMi45MTMtLjYxNWMxLjY5Ni0uMTggMy43ODUuMDMgNS40MzcuNjYxIDEuODQ4LjYwMSAyLjA0IDEuNDcyIDEuNTc2IDIuMDcyLS40NjUuNi0xLjYyMiAxLjAzNi0xLjYyMiAxLjAzNmwtOC41NDQgMy4xMDdWMTguODZ6TTEuODA3IDE4LjZjLTEuOS0uNTQ1LTIuMjE0LTEuNjY4LTEuMzUyLTIuMzIuODAxLS41ODYgMi4xNi0xLjA1MiAyLjE2LTEuMDUybDUuNjE1LTIuMDEzdjIuMzEzTDQuMjA1IDE3Yy0uNzA1LjI3MS0uODI1LjYzMi0uMjM5LjgyNi41ODYuMTk1IDEuNjM3LjE1IDIuMzQzLS4xMkw4LjI0NyAxN3YyLjA3NGMtLjEyLjAzLS4yNTYuMDQ0LS4zOS4wNzMtMS45MzkuMzMxLTMuOTk2LjE5Ni02LjAzOC0uNDc5eiIvPjwvc3ZnPg==" x="120" y="108" width="160" height="160" preserveAspectRatio="xMidYMid meet"/>
+    <text x="200" y="300" text-anchor="middle" fill="#FFFFFF" font-family="system-ui, Arial, sans-serif" font-size="26" font-weight="700" letter-spacing="7">STORE</text>
+  </g>
+
+  <!-- Hyper-glass rim -->
+  <rect x="1.5" y="1.5" width="397" height="397" rx="26.5" fill="none" stroke="url(#frame-playstation)" stroke-width="2"/>
+  <rect x="10" y="10" width="380" height="380" rx="22" fill="none" stroke="#ddb7ff" stroke-opacity="0.08" stroke-width="1"/>
+
+  <!-- Gorumin cyan accent (matches app icon) -->
+  <circle cx="348" cy="52" r="16" fill="#4cd7f6" fill-opacity="0.18"/>
+  <circle cx="348" cy="52" r="7" fill="#4cd7f6" filter="url(#glow-playstation)"/>
+</svg>

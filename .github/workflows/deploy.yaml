@@ -78,7 +78,13 @@ jobs:
           MP_WEBHOOK_SECRET=${{ secrets.MP_WEBHOOK_SECRET }},\
           MP_NOTIFICATION_URL=${{ secrets.MEDUSA_BACKEND_URL }}/hooks/mercadopago,\
           FAZER_API_KEY=${{ secrets.FAZER_API_KEY }},\
-          REDIS_URL=${{ secrets.REDIS_URL }}" \
+          REDIS_URL=${{ secrets.REDIS_URL }},\
+          BREVO_API_KEY=${{ secrets.BREVO_API_KEY }},\
+          BREVO_FROM_EMAIL=${{ secrets.BREVO_FROM_EMAIL }},\
+          BREVO_SENDER_NAME=${{ secrets.BREVO_SENDER_NAME }},\
+          BREVO_REPLY_TO=${{ secrets.BREVO_REPLY_TO }},\
+          ADMIN_ALERT_EMAIL=${{ secrets.ADMIN_ALERT_EMAIL }},\
+          REVALIDATE_SECRET=${{ secrets.REVALIDATE_SECRET }}" \
             --allow-unauthenticated
 
       - name: Build & push Storefront

@@ -1,11 +1,12 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules } from "@medusajs/framework/utils"
+import { getStorefrontBaseUrl } from "../../lib/storefront-url"
 
 // Public endpoint hit from the verification email link (US-1.5 / RUM-14).
 // Validates the token stored in customer metadata and marks the email verified.
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const { token, id } = req.query as { token?: string; id?: string }
-  const storefront = process.env.STOREFRONT_URL || "http://localhost:8000"
+  const storefront = getStorefrontBaseUrl()
 
   if (!token || !id) {
     return res.redirect(`${storefront}/co?email_verified=invalid`)
@@ -34,5 +35,5 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     },
   })
 
-  return res.redirect(`${storefront}/co?email_verified=success`)
+  return res.redirect(`${storefront}/co/account?email_verified=success`)
 }

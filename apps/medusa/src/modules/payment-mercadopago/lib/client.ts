@@ -1,8 +1,10 @@
 import crypto from "crypto"
 import type {
   MpCreatePaymentInput,
+  MpCustomer,
   MpPayment,
   MpRefund,
+  MpSavedCard,
 } from "./types"
 
 const DEFAULT_BASE_URL = "https://api.mercadopago.com"
@@ -63,6 +65,33 @@ export class MercadoPagoClient {
       amount != null ? { amount } : {},
       { "X-Idempotency-Key": crypto.randomUUID() }
     )
+  }
+
+  createCustomer(input: {
+    email: string
+    first_name?: string
+    last_name?: string
+  }): Promise<MpCustomer> {
+    return this.request<MpCustomer>("POST", "/v1/customers", input)
+  }
+
+  searchCustomers(email: string): Promise<{ results?: MpCustomer[] }> {
+    const qs = new URLSearchParams({ email })
+    return this.request("GET", `/v1/customers/search?${qs.toString()}`)
+  }
+
+  listCustomerCards(customerId: string): Promise<MpSavedCard[]> {
+    return this.request<MpSavedCard[]>("GET", `/v1/customers/${customerId}/cards`)
+  }
+
+  saveCustomerCard(customerId: string, token: string): Promise<MpSavedCard> {
+    return this.request<MpSavedCard>("POST", `/v1/customers/${customerId}/cards`, {
+      token,
+    })
+  }
+
+  deleteCustomerCard(customerId: string, cardId: string): Promise<void> {
+    return this.request<void>("DELETE", `/v1/customers/${customerId}/cards/${cardId}`)
   }
 
   private async request<T>(

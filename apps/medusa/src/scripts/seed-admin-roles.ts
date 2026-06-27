@@ -3,6 +3,7 @@ import { Modules } from "@medusajs/framework/utils"
 import { GORUMIN_ROLE_META_KEY, GoruminAdminRole, ROLE_LABELS } from "../lib/admin-roles"
 
 const ROLE_BY_EMAIL: Record<string, GoruminAdminRole> = {
+  "arjul1989@gmail.com": "admin",
   "admin@gorumin.com": "admin",
   "editor@gorumin.com": "editor",
   "support@gorumin.com": "support",
