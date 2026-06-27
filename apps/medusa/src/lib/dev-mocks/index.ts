@@ -11,6 +11,10 @@ export function isMockFazerEnabled(): boolean {
   return isDevMocksAllowed() && process.env.MOCK_FAZER === "true"
 }
 
+export function isMockWompiEnabled(): boolean {
+  return isDevMocksAllowed() && process.env.MOCK_WOMPI === "true"
+}
+
 export function mockMpBackendBase(): string {
   return (process.env.MEDUSA_BACKEND_URL ?? "http://localhost:9000").replace(/\/$/, "")
 }

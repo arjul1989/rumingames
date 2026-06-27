@@ -1,5 +1,6 @@
 import { checkoutLabels } from "@lib/i18n/es-co"
 import { retrieveCart } from "@lib/data/cart"
+import { retrieveCustomer } from "@lib/data/customer"
 import CheckoutSummary from "@modules/checkout/templates/checkout-summary"
 import WompiCheckoutForm from "@modules/checkout/templates/wompi-checkout-form"
 import { Metadata } from "next"
@@ -9,7 +10,12 @@ export const metadata: Metadata = {
   title: checkoutLabels.title,
 }
 
-export default async function WompiCheckoutPage() {
+type Props = {
+  params: Promise<{ countryCode: string }>
+}
+
+export default async function WompiCheckoutPage({ params }: Props) {
+  const { countryCode } = await params
   const cart = await retrieveCart(
     undefined,
     "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name, *shipping_address, *billing_address, *payment_collection, *payment_collection.payment_sessions, email, metadata"
@@ -19,10 +25,16 @@ export default async function WompiCheckoutPage() {
     return notFound()
   }
 
+  const customer = await retrieveCustomer()
+
   return (
     <div className="grid grid-cols-1 small:grid-cols-[1fr_416px] content-container gap-x-12 gap-y-8 py-12">
       <div className="hyper-glass rounded-2xl p-6 md:p-8">
-        <WompiCheckoutForm cart={cart} />
+        <WompiCheckoutForm
+          cart={cart}
+          customer={customer}
+          countryCode={countryCode.toLowerCase()}
+        />
       </div>
       <div className="hyper-glass h-fit rounded-2xl p-6 md:sticky md:top-24">
         <CheckoutSummary cart={cart} />

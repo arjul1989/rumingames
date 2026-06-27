@@ -6,6 +6,11 @@ export const PAYMENT_GATEWAYS: readonly PaymentGatewayId[] = [
   "wompi",
 ]
 
+export const PAYMENT_GATEWAY_PROVIDER_IDS: Record<PaymentGatewayId, string> = {
+  mercadopago: "pp_mercadopago_mercadopago",
+  wompi: "pp_wompi_wompi",
+}
+
 export interface CountryPaymentGatewayView {
   country_code: string
   active_gateway: PaymentGatewayId

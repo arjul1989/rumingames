@@ -38,6 +38,10 @@ export const paymentInfoMap: Record<
     title: "Mercado Pago (tarjeta, PSE, Efecty)",
     icon: <CreditCard />,
   },
+  pp_wompi_wompi: {
+    title: "Wompi (tarjeta, PSE, Nequi)",
+    icon: <CreditCard />,
+  },
   // Add more payment providers here
 }
 
@@ -60,6 +64,12 @@ export const isMercadoPago = (providerId?: string) => {
 }
 export const MERCADOPAGO_PROVIDER_ID =
   process.env.NEXT_PUBLIC_PAYMENT_PROVIDER_ID || "pp_mercadopago_mercadopago"
+
+export const WOMPI_PROVIDER_ID = "pp_wompi_wompi"
+
+export const isWompi = (providerId?: string) => {
+  return providerId?.startsWith("pp_wompi")
+}
 
 // Add currencies that don't need to be divided by 100
 export const noDivisionCurrencies = [

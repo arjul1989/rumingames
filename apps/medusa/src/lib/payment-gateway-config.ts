@@ -8,6 +8,7 @@ import type {
 import { PAYMENT_GATEWAYS } from "./payment-gateway-types"
 import { SUPPLIER_MODULE } from "../modules/supplier"
 import type SupplierModuleService from "../modules/supplier/service"
+import { syncRegionPaymentProviders } from "./sync-region-payment-providers"
 
 const DEFAULT_COUNTRY = "co"
 
@@ -133,6 +134,8 @@ export async function updateCountryPaymentGateway(
       active_gateway: activeGateway,
     },
   ])
+
+  await syncRegionPaymentProviders(container, normalized, activeGateway)
 
   return getCountryPaymentGatewayAdmin(container, normalized)
 }

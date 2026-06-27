@@ -16,6 +16,7 @@ import {
 import { getRegion } from "./regions"
 import { getLocale } from "./locale-actions"
 import { getClientIpAddress } from "@lib/client-ip"
+import { transferCart } from "./customer"
 
 /**
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
@@ -60,7 +61,12 @@ export async function getOrSetCart(countryCode: string) {
     throw new Error(`Region not found for country code: ${countryCode}`)
   }
 
-  let cart = await retrieveCart(undefined, "id,region_id")
+  let cart = await retrieveCart(undefined, "id,region_id,customer_id")
+
+  if (cart && !cart.customer_id && "authorization" in (await getAuthHeaders())) {
+    await transferCart().catch(() => {})
+    cart = await retrieveCart(undefined, "id,region_id,customer_id")
+  }
 
   const headers = {
     ...(await getAuthHeaders()),
@@ -558,6 +564,118 @@ export async function payWithMercadoPago(
     }
 
     const approved = MP_APPROVED_STATUSES.includes(
+      order.payment_status as string
+    )
+    const target = approved ? "success" : "pending"
+    redirect(`/${cc}/checkout/${target}?order=${order.id}`)
+  }
+
+  redirect(
+    `/${countryCode}/checkout/failure?reason=${encodeURIComponent(
+      failureReason || "No se pudo procesar el pago."
+    )}`
+  )
+}
+
+const WOMPI_PROVIDER_ID = "pp_wompi_wompi"
+
+const WOMPI_APPROVED_STATUSES = [
+  "captured",
+  "authorized",
+  "partially_captured",
+  "partially_authorized",
+]
+
+/**
+ * Completes a cart paid with Wompi after the widget returns a transaction id.
+ */
+export async function payWithWompi(
+  countryCode: string,
+  paymentData: Record<string, unknown>
+) {
+  const cart = await retrieveCart(
+    undefined,
+    "*payment_collection, *payment_collection.payment_sessions, *region, *shipping_address, email, metadata"
+  )
+
+  if (!cart) {
+    return { error: "No encontramos tu carrito." }
+  }
+
+  const pendingSession = cart.payment_collection?.payment_sessions?.find(
+    (s) => s.status === "pending" && s.provider_id === WOMPI_PROVIDER_ID
+  )
+
+  const ip_address = await getClientIpAddress()
+
+  await initiatePaymentSession(cart, {
+    provider_id: WOMPI_PROVIDER_ID,
+    data: {
+      ...(pendingSession?.data as Record<string, unknown> | undefined),
+      ...paymentData,
+      wompi_transaction_id: paymentData.transaction_id,
+      session_id: paymentData.session_id ?? pendingSession?.id,
+      amount: cart.total,
+      ip_address,
+      payer_email: cart.email,
+    },
+  } as HttpTypes.StoreInitializePaymentSession)
+
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  let order: HttpTypes.StoreOrder | undefined
+  let failureReason = ""
+
+  try {
+    const res = await sdk.store.cart.complete(cart.id, {}, headers)
+    if (res?.type === "order") {
+      order = res.order
+    }
+  } catch (e) {
+    failureReason = e instanceof Error ? e.message : "El pago fue rechazado."
+    try {
+      const refreshed = await retrieveCart(
+        cart.id,
+        "*payment_collection, *payment_collection.payment_sessions"
+      )
+      const session = refreshed?.payment_collection?.payment_sessions?.find(
+        (s) =>
+          s.id === pendingSession?.id ||
+          s.status === "error" ||
+          s.status === "pending"
+      )
+      const wompiError = (session?.data as Record<string, unknown> | undefined)
+        ?.wompi_error
+      if (typeof wompiError === "string" && wompiError.trim()) {
+        failureReason = wompiError
+      }
+    } catch {
+      // Keep generic failure reason.
+    }
+  }
+
+  if (order) {
+    const cc =
+      order.shipping_address?.country_code?.toLowerCase() || countryCode
+
+    revalidateTag(await getCacheTag("carts"))
+    revalidateTag(await getCacheTag("orders"))
+    removeCartId()
+
+    const paymentDataOrder = (order.payment_collections?.[0]?.payments?.[0]
+      ?.data ?? {}) as Record<string, unknown>
+
+    const wompiRedirect = paymentDataOrder.wompi_redirect_url as string | undefined
+    if (wompiRedirect) {
+      const url = new URL(wompiRedirect)
+      url.searchParams.set("order_id", order.id)
+      url.searchParams.set("country_code", cc)
+      redirect(url.toString())
+    }
+
+    const approved = WOMPI_APPROVED_STATUSES.includes(
       order.payment_status as string
     )
     const target = approved ? "success" : "pending"
