@@ -6,6 +6,7 @@ import { revalidateStorefrontAll } from "../lib/storefront-revalidate"
 import seedProductImages from "./seed-product-images"
 import seedCmsRealContent from "./seed-cms-real-content"
 import seedArticleImages from "./seed-article-images"
+import syncFeaturedGames from "./sync-featured-games"
 
 type SyncMode = "fast" | "push" | "full"
 
@@ -55,6 +56,7 @@ export default async function syncStorefrontContent({ container }: ExecArgs) {
   await seedProductImages({ container } as ExecArgs)
   await seedCmsRealContent({ container } as ExecArgs)
   await seedArticleImages({ container } as ExecArgs)
+  await syncFeaturedGames({ container } as ExecArgs)
 
   logger.info("=== Purge storefront cache ===")
   const revalidated = await revalidateStorefrontAll()

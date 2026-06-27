@@ -46,29 +46,28 @@ export const retrieveCustomer =
   async (): Promise<HttpTypes.StoreCustomer | null> => {
     const authHeaders = await getAuthHeaders()
 
-    if (!authHeaders) return null
+    if (!("authorization" in authHeaders)) return null
 
-    const headers = {
-      ...authHeaders,
-    }
-
-    const next = {
-      ...(await getCacheOptions("customers")),
-    }
-
-    return await sdk.client
-      .fetch<{ customer: HttpTypes.StoreCustomer }>(`/store/customers/me`, {
+    try {
+      const { customer } = await sdk.client.fetch<{
+        customer: HttpTypes.StoreCustomer
+      }>(`/store/customers/me`, {
         method: "GET",
         query: {
           fields:
             "id,email,first_name,last_name,phone,metadata,*orders,*addresses",
         },
-        headers,
-        next,
-        cache: "force-cache",
+        headers: authHeaders,
+        cache: "no-store",
       })
-      .then(({ customer }) => customer)
-      .catch(() => null)
+      return customer
+    } catch (error) {
+      if (error instanceof FetchError && error.status === 401) {
+        // Cannot clear cookies here — retrieveCustomer runs from Server Components
+        // (layout), not Server Actions. Stale JWT is ignored on the next request.
+      }
+      return null
+    }
   }
 
 export const updateCustomer = async (body: HttpTypes.StoreUpdateCustomer) => {
@@ -318,8 +317,18 @@ export async function transferCart() {
   }
 
   const headers = await getAuthHeaders()
+  if (!("authorization" in headers)) {
+    throw new Error("Debes iniciar sesión para vincular el carrito.")
+  }
 
-  await sdk.store.cart.transferCart(cartId, {}, headers)
+  try {
+    await sdk.store.cart.transferCart(cartId, {}, headers)
+  } catch (error) {
+    if (error instanceof FetchError && error.status === 401) {
+      throw new Error("Sesión expirada. Inicia sesión de nuevo.")
+    }
+    throw error
+  }
 
   const cartCacheTag = await getCacheTag("carts")
   revalidateTag(cartCacheTag)
