@@ -170,7 +170,9 @@ EOF
         --args medusa,db:migrate \
         --set-cloudsql-instances "$CONN_NAME" \
         --env-vars-file "$env_file" \
-        --task-timeout 600 \
+        --memory 2Gi \
+        --cpu 2 \
+        --task-timeout 3600 \
         --max-retries 0 \
         --quiet
     else
@@ -181,7 +183,9 @@ EOF
         --args medusa,db:migrate \
         --set-cloudsql-instances "$CONN_NAME" \
         --env-vars-file "$env_file" \
-        --task-timeout 600 \
+        --memory 2Gi \
+        --cpu 2 \
+        --task-timeout 3600 \
         --max-retries 0 \
         --quiet
     fi
