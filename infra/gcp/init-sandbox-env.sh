@@ -42,6 +42,10 @@ copy_env_var() {
     local line
     line="$(grep -E "^${key}=" "$file" 2>/dev/null | tail -1 || true)"
     if [[ -n "$line" && "$line" != *"change-me"* && "$line" != "${key}=" ]]; then
+      local value="${line#*=}"
+      if [[ "$value" != \"*\" && "$value" == *" "* ]]; then
+        line="${key}=\"${value}\""
+      fi
       "${SED_INPLACE[@]}" "s|^${key}=.*|${line}|" "$TARGET"
     fi
   fi
@@ -71,7 +75,7 @@ if [[ -f "$MEDUSA_ENV" ]]; then
   "${SED_INPLACE[@]}" 's|^EPAYCO_NOTIFICATION_URL=.*|EPAYCO_NOTIFICATION_URL=https://api.sbx.gorumin.com/hooks/epayco|' "$TARGET"
   "${SED_INPLACE[@]}" 's|^MP_NOTIFICATION_URL=.*|MP_NOTIFICATION_URL=https://api.sbx.gorumin.com/hooks/mercadopago|' "$TARGET"
   "${SED_INPLACE[@]}" 's|^EPAYCO_TEST_MODE=.*|EPAYCO_TEST_MODE=true|' "$TARGET"
-  "${SED_INPLACE[@]}" 's|^BREVO_SENDER_NAME=.*|BREVO_SENDER_NAME=Gorumin Sandbox|' "$TARGET"
+  "${SED_INPLACE[@]}" 's|^BREVO_SENDER_NAME=.*|BREVO_SENDER_NAME="Gorumin Sandbox"|' "$TARGET"
 fi
 
 echo ""

@@ -13,7 +13,7 @@ export function isEpaycoThreeDsRequired(
 }
 
 export function getEpaycoThreeDsPayload(
-  response: EpaycoChargeResponse
+  response: Pick<EpaycoChargeResponse, "3DS" | "data">
 ): EpaycoThreeDsPayload | null {
   return response["3DS"] ?? response.data?.["3DS"] ?? null
 }
