@@ -140,6 +140,17 @@ Ya desplegado. Scripts existentes:
 
 Pasos que **debes hacer tú** (no automatizables desde el repo):
 
+| Paso | Estado |
+|------|--------|
+| A.3 DNS (`sbx`, `api.sbx`) | ✅ Hecho |
+| B. Secrets / `.env.sandbox` | ✅ Generado (revisar claves de pago) |
+| C. Bootstrap + deploy | 🔄 Medusa en redeploy |
+| D. Admin sandbox | ⏳ Tras Medusa healthy |
+| E. Webhooks proveedores | ⏳ Pendiente |
+| F. Google OAuth | ✅ Hecho |
+| G. GitHub Environments | ✅ Hecho |
+| H. Redis (Upstash) | ⏳ Opcional — sin `REDIS_URL` usa memoria local |
+
 ### A. DNS (Cloudflare o tu registrador)
 
 1. Verifica que `gorumin.com` ya está verificado en GCP (dominio raíz en Cloud Run).
