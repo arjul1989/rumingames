@@ -2,6 +2,7 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules, PaymentWebhookEvents } from "@medusajs/framework/utils"
 import { verifyMpSignature } from "../../../modules/payment-mercadopago/lib/signature"
 import { clientIp, rateLimit } from "../../../lib/rate-limit"
+import { webhookSecretRequired } from "../../../lib/webhook-auth"
 import { emitMonitorAlert } from "../../../lib/monitoring"
 import { logSupportTrace } from "../../../lib/support/log-support-trace"
 
@@ -34,6 +35,12 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
   // 1) Authenticity: verify x-signature when a secret is configured.
   const secret = process.env.MP_WEBHOOK_SECRET
+  const secretCheck = webhookSecretRequired(secret, "Mercado Pago")
+  if (!secretCheck.ok) {
+    logger.error("Mercado Pago webhook: secret missing in production.")
+    return res.status(secretCheck.status).json({ message: secretCheck.message })
+  }
+
   if (secret && secret !== "local-dev-mp-webhook-secret") {
     const valid = verifyMpSignature({
       xSignature: req.headers["x-signature"] as string | undefined,
@@ -51,7 +58,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       })
       return res.status(401).json({ message: "Invalid signature" })
     }
-  } else {
+  } else if (process.env.NODE_ENV !== "production") {
     logger.warn("Mercado Pago webhook: MP_WEBHOOK_SECRET not set; skipping signature check (dev).")
   }
 

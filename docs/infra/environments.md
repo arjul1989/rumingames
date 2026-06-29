@@ -134,6 +134,69 @@ Ya desplegado. Scripts existentes:
 | `./infra/gcp/remap-domains.sh` | gorumin.com / api.gorumin.com |
 | `./infra/gcp/sync-prod.sh` | Sync contenido prod |
 
+### Webhooks en proveedores (producción)
+
+Registra en cada dashboard con las claves **live** de producción:
+
+| Proveedor | URL | Secreto en Medusa |
+|-----------|-----|-------------------|
+| Mercado Pago | `https://api.gorumin.com/hooks/mercadopago` | `MP_WEBHOOK_SECRET` |
+| Wompi | `https://api.gorumin.com/hooks/wompi` | `WOMPI_EVENTS_SECRET` |
+| ePayco | `https://api.gorumin.com/hooks/epayco` | `EPAYCO_CONFIRMATION_SECRET` |
+| Fazer Cards | `https://api.gorumin.com/hooks/fazer` | `FAZER_WEBHOOK_SECRET` |
+
+**Fazer Cards (panel reseller → Settings → Webhooks)**
+
+1. URL: `https://api.gorumin.com/hooks/fazer`
+2. Genera un secreto fuerte: `openssl rand -hex 32`
+3. Pega el mismo valor en el panel de Fazer y en `FAZER_WEBHOOK_SECRET` (`.env.production` + redeploy Medusa).
+4. Header de firma: `X-FazerCards-Signature` → `FAZER_WEBHOOK_SIGNATURE_HEADER=x-fazercards-signature` (default en código).
+5. Verificación: HMAC-SHA256 del **cuerpo raw** del POST; en producción Medusa **rechaza** webhooks sin secreto o con firma inválida (401/503).
+6. Eventos soportados: `order.completed`, `order.failed`, `order.refunded` (formato oficial) y payload legacy plano.
+
+### IP fija de salida (whitelist en Fazer, Brevo, etc.)
+
+Cloud Run **no tiene IP de salida fija** por defecto: las llamadas salientes (Fazer API, Brevo, Binance, Wompi…) usan el pool NAT compartido de Google.
+
+| Necesidad | Solución |
+|-----------|----------|
+| Whitelist de IP en Fazer u otro proveedor | **Cloud NAT + IP estática regional** + VPC connector en `gorumin-medusa` |
+| Solo proteger credenciales | Mantener keys en Secret Manager / env de Cloud Run (nunca en el frontend) |
+
+Pasos resumidos (GCP, una vez):
+
+1. VPC `gorumin-prod` + subred `10.8.0.0/28`
+2. IP estática regional `gorumin-egress-ip`
+3. Cloud Router + Cloud NAT (solo esa IP para la subred)
+4. Serverless VPC Access connector → asociar a Cloud Run Medusa (`--vpc-egress all-traffic`)
+5. Registrar `gorumin-egress-ip` en Fazer / Brevo / Binance según cada panel
+
+Detalle Brevo: `docs/email/brevo-setup.md` (misma arquitectura aplica a Fazer).
+
+### Seguridad de credenciales y APIs
+
+| Activo | Dónde vive | Expuesto al navegador |
+|--------|------------|------------------------|
+| `FAZER_API_KEY` | Solo Medusa (Cloud Run env) | No — header `X-Api-Key` server→Fazer |
+| `MP_ACCESS_TOKEN`, Wompi/ePayco private keys | Solo Medusa | No |
+| `MP_PUBLIC_KEY`, Wompi `pub_*` | Store API / Brick | Sí (esperado para checkout) |
+| `MEDUSA_PUBLISHABLE_KEY` | Storefront build | Sí (solo operaciones store permitidas) |
+| Códigos digitales | DB cifrados (`DIGITAL_CODE_ENCRYPTION_KEY`) | Solo tras login + email verificado |
+
+**Controles ya implementados**
+
+- Webhooks: firma HMAC/checksum + rate limit + deduplicación; en `NODE_ENV=production` sin secreto → 503.
+- Admin custom: RBAC por permiso (`fazer`, `supplier`, `refunds`, …).
+- `/store/orders/:id/digital-codes`: sesión cliente + ownership + email verificado.
+- Mocks (`/dev/mock-mp`, `MOCK_*`): bloqueados en producción.
+- Tráfico cliente↔GCP: HTTPS (TLS). Credenciales de proveedor no viajan al browser.
+
+**Riesgo residual**
+
+- Sin Cloud NAT, la IP de salida puede cambiar → whitelist en Fazer puede romperse tras escalado de Google.
+- Publishable key + store API: abuso de carrito/checkout posible; mitigar con rate limits del BFF y monitoreo.
+- Rotar `FAZER_API_KEY` / webhook secret si hubo exposición accidental (nunca commitear `.env.production`).
+
 ---
 
 ## Checklist: montar sandbox por primera vez
