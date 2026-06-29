@@ -1,5 +1,6 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { getFazerConfig, updateFazerConfig } from "../../../../lib/fazer-config"
+import { updateCountryPricingConfig } from "../../../../lib/country-pricing-config"
 import { getUsdCopRate, getDefaultMarginPct } from "../../../../lib/pricing"
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
@@ -24,5 +25,10 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     patch.default_margin_pct = body.default_margin_pct
   }
   const config = await updateFazerConfig(req.scope, patch)
+  if (patch.usd_cop_rate) {
+    await updateCountryPricingConfig(req.scope, "co", {
+      fx_rate: patch.usd_cop_rate,
+    })
+  }
   res.json(config)
 }

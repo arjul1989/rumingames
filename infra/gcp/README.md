@@ -10,10 +10,10 @@ Three-environment setup for Gorumin. **Full guide:** [docs/infra/environments.md
 
 ```bash
 # First-time sandbox
-cp env.sandbox.example .env.sandbox   # fill secrets
-./bootstrap-sandbox.sh
-./deploy-sandbox.sh
-./remap-domains-sandbox.sh
+./infra/gcp/init-sandbox-env.sh
+./infra/gcp/bootstrap-sandbox.sh
+./infra/gcp/deploy-sandbox.sh
+./infra/gcp/remap-domains-sandbox.sh
 ```
 
 Templates: `env.local.example`, `env.sandbox.example`, `env.production.example`

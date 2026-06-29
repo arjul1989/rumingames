@@ -8,6 +8,7 @@ import { isFundingUxEnabled } from "@lib/funding-settings"
 type CodeStatus = "pending" | "processing" | "delivered" | "failed" | "refunded"
 
 type DeliveredCode = {
+  id?: string
   line_item_id: string | null
   status: CodeStatus
   code: string | null
@@ -94,7 +95,7 @@ export default function DigitalCodes({ order }: { order: HttpTypes.StoreOrder })
       <div className="flex flex-col gap-3">
         {codes.map((c, idx) => {
           const meta = STATUS[c.status]
-          const key = c.line_item_id ?? String(idx)
+          const key = c.id ?? `${c.line_item_id ?? "line"}-${idx}`
           const isRevealed = revealed[key]
           return (
             <div

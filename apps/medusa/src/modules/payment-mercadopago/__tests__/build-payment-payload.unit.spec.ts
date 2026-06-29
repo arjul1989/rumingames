@@ -46,4 +46,19 @@ describe("buildMpCreatePaymentPayload", () => {
     expect(payload.transaction_details?.financial_institution).toBe("1009")
     expect(payload.additional_info?.ip_address).toBe("190.85.120.10")
   })
+
+  it("prefers server amount over brick transaction_amount", () => {
+    const payload = buildMpCreatePaymentPayload(
+      {
+        session_id: "payses_test",
+        amount: 19660,
+        transaction_amount: 18250,
+        payment_method_id: "visa",
+        token: "tok_test",
+      },
+      {}
+    )
+
+    expect(payload.transaction_amount).toBe(19660)
+  })
 })

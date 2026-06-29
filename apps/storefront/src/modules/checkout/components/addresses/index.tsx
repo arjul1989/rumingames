@@ -1,6 +1,11 @@
 "use client"
 import { setAddresses } from "@lib/data/cart"
+import { isCheckoutStepOpen } from "@lib/checkout-steps"
 import { checkoutLabels } from "@lib/i18n/es-co"
+import {
+  formatCoIdentification,
+  formatCoPhone,
+} from "@lib/util/co-locale-input"
 import { CheckCircleSolid } from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
 import Divider from "@modules/common/components/divider"
@@ -23,7 +28,8 @@ const Addresses = ({
   const router = useRouter()
   const pathname = usePathname()
 
-  const isOpen = searchParams.get("step") === "address"
+  const currentStep = searchParams.get("step")
+  const isOpen = isCheckoutStepOpen("address", currentStep)
 
   const handleEdit = () => {
     router.push(pathname + "?step=address")
@@ -55,6 +61,7 @@ const Addresses = ({
       </div>
       {isOpen ? (
         <form action={formAction}>
+          <input type="hidden" name="checkout_return_path" value={pathname} />
           <div className="pb-8">
             <ShippingAddress customer={customer} cart={cart} />
             <SubmitButton
@@ -82,7 +89,7 @@ const Addresses = ({
                 <Text className="txt-medium text-on-surface-variant/80">
                   {cart.email}
                   {cart.shipping_address.phone
-                    ? ` · ${cart.shipping_address.phone}`
+                    ? ` · ${formatCoPhone(cart.shipping_address.phone)}`
                     : ""}
                 </Text>
                 {(() => {
@@ -96,7 +103,8 @@ const Addresses = ({
                   if (!docNumber) return null
                   return (
                     <Text className="txt-medium text-on-surface-variant/80">
-                      {docType ?? "CC"} {docNumber}
+                      {docType ?? "CC"}{" "}
+                      {formatCoIdentification(docNumber, docType ?? "CC")}
                     </Text>
                   )
                 })()}

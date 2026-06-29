@@ -3,6 +3,7 @@ import Image from "next/image"
 import { notFound } from "next/navigation"
 
 import { getArticle } from "@lib/data/cms"
+import { resolveCmsMediaUrl } from "@lib/cms-media"
 import { absoluteUrl, localizedAlternates, SITE_NAME } from "@lib/seo"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import ShareButtons from "@modules/gorumin/components/share-buttons"
@@ -35,7 +36,8 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const title = article.seo_title ?? article.title
   const description =
     article.seo_description ?? article.excerpt ?? `${article.title} — ${SITE_NAME}`
-  const ogImage = article.og_image ?? article.cover_image
+  const ogImage = resolveCmsMediaUrl(article.og_image ?? article.cover_image)
+  const ogImageAbsolute = ogImage?.startsWith("/") ? absoluteUrl(ogImage.slice(1)) : ogImage
   return {
     title,
     description,
@@ -47,13 +49,13 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
       url: absoluteUrl(`co/noticias/${slug}`),
       publishedTime: article.published_at ?? undefined,
       authors: article.author ? [article.author] : undefined,
-      images: ogImage ? [ogImage] : [],
+      images: ogImageAbsolute ? [ogImageAbsolute] : [],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: ogImage ? [ogImage] : [],
+      images: ogImageAbsolute ? [ogImageAbsolute] : [],
     },
   }
 }
@@ -64,13 +66,17 @@ export default async function ArticlePage(props: Props) {
 
   if (!article) notFound()
 
+  const coverImage = resolveCmsMediaUrl(article.cover_image)
   const articleUrl = absoluteUrl(`${countryCode}/noticias/${slug}`)
+  const coverImageAbsolute = coverImage?.startsWith("/")
+    ? absoluteUrl(coverImage.slice(1))
+    : coverImage
   const newsLd = {
     "@context": "https://schema.org",
     "@type": "NewsArticle",
     headline: article.title,
     description: article.seo_description ?? article.excerpt ?? undefined,
-    image: article.og_image ?? article.cover_image ?? undefined,
+    image: coverImageAbsolute ?? undefined,
     datePublished: article.published_at ?? undefined,
     author: article.author
       ? { "@type": "Person", name: article.author }
@@ -138,11 +144,11 @@ export default async function ArticlePage(props: Props) {
         </div>
       </header>
 
-      {article.cover_image && (
+      {coverImage && (
         <div className="mx-auto my-10 max-w-4xl">
           <div className="relative aspect-video w-full overflow-hidden rounded-2xl">
             <Image
-              src={article.cover_image}
+              src={coverImage}
               alt={article.title}
               fill
               sizes="(max-width: 1024px) 100vw, 896px"

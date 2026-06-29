@@ -1,6 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules, PaymentWebhookEvents } from "@medusajs/framework/utils"
 import { clientIp, rateLimit } from "../../../lib/rate-limit"
+import { webhookSecretRequired } from "../../../lib/webhook-auth"
 import { emitMonitorAlert } from "../../../lib/monitoring"
 import { logSupportTrace } from "../../../lib/support/log-support-trace"
 
@@ -19,6 +20,12 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const signature = String(body.x_signature ?? body.signature ?? "")
 
   const secret = process.env.EPAYCO_CONFIRMATION_SECRET
+  const secretCheck = webhookSecretRequired(secret, "ePayco")
+  if (!secretCheck.ok) {
+    logger.error("ePayco webhook: secret missing in production.")
+    return res.status(secretCheck.status).json({ message: secretCheck.message })
+  }
+
   if (secret && signature) {
     const expected = [
       process.env.EPAYCO_PUBLIC_KEY,
@@ -41,7 +48,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   } else if (secret) {
     logger.warn("ePayco webhook: missing signature; rejecting.")
     return res.status(401).json({ message: "Invalid signature" })
-  } else {
+  } else if (process.env.NODE_ENV !== "production") {
     logger.warn("ePayco webhook: EPAYCO_CONFIRMATION_SECRET not set; skipping verification (dev).")
   }
 

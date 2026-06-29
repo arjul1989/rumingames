@@ -124,8 +124,7 @@ function productId(map: ProductMap, handle: string): string[] {
 }
 
 function articleCover(filename: string): string {
-  const base = (process.env.STOREFRONT_URL ?? "http://localhost:8000").replace(/\/$/, "")
-  return `${base}/articles/${filename}`
+  return `/articles/${filename}`
 }
 
 function buildArticles(

@@ -1,3 +1,4 @@
+import { mapCheckoutFailureReason } from "@lib/mp-brick-errors"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { Metadata } from "next"
 
@@ -24,15 +25,13 @@ export default async function CheckoutFailurePage({ searchParams }: Props) {
           No pudimos procesar tu pago
         </h1>
         <p className="max-w-lg text-on-surface-variant/80">
-          {reason
-            ? reason
-            : "Tu pago no se completó. No se realizó ningún cargo. Revisa los datos de tu tarjeta o intenta con otro método."}
+          {mapCheckoutFailureReason(reason)}
         </p>
       </div>
 
       <div className="flex flex-col gap-3 small:flex-row">
         <LocalizedClientLink
-          href="/checkout?step=payment"
+          href="/checkout/mercadopago?step=review"
           className="brutalist-button flex-1 bg-primary px-8 py-4 text-center font-mono text-label-caps tracking-widest text-on-primary transition-transform hover:scale-[1.02]"
         >
           REINTENTAR PAGO

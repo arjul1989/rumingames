@@ -74,7 +74,7 @@ export async function getCountryPricingConfig(
       country_code: normalized,
       fx_rate: getUsdCopRate(),
       local_currency_code: "cop",
-      taxes: [],
+      taxes: [] as unknown as Record<string, unknown>,
     },
   ])
 

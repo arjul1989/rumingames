@@ -1,9 +1,9 @@
 import { HttpTypes } from "@medusajs/types"
-import type { Article, Streamer } from "@lib/data/cms"
+import type { Article, FeaturedGameDetail, Streamer } from "@lib/data/cms"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import HomeHero from "@modules/gorumin/components/home-hero"
+import FeaturedGamesHero from "@modules/gorumin/components/featured-games-hero"
 import ProductCard from "@modules/gorumin/components/product-card"
-import ArticleCard from "@modules/gorumin/components/article-card"
+import HomeArticlesCarousel from "@modules/gorumin/components/home-articles-carousel"
 import StreamerRail from "@modules/gorumin/components/streamer-rail"
 
 function SectionHeading({
@@ -42,20 +42,24 @@ function SectionHeading({
   )
 }
 
-// Community-first home (US-7.2 / RUM-38). Hero, popular cards, recent news and
-// the streamer feed, all wired to live data.
+// Community-first home (US-7.2 / RUM-38). Featured games hero, popular cards,
+// recent news and the streamer feed, all wired to live data.
 export default function HomeTemplate({
   products,
   articles,
   streamers,
+  featuredGames,
 }: {
   products: HttpTypes.StoreProduct[]
   articles: Article[]
   streamers: Streamer[]
+  featuredGames: FeaturedGameDetail[]
 }) {
   return (
     <div className="flex flex-col">
-      <HomeHero />
+      {featuredGames.length > 0 ? (
+        <FeaturedGamesHero games={featuredGames} />
+      ) : null}
 
       <div className="content-container flex flex-col gap-24 py-24">
         {products.length > 0 && (
@@ -80,11 +84,7 @@ export default function HomeTemplate({
               subtitle="LO ÚLTIMO DEL MUNDO GAMER"
               href="/noticias"
             />
-            <div className="grid grid-cols-1 gap-gutter md:grid-cols-2 lg:grid-cols-3">
-              {articles.slice(0, 6).map((article) => (
-                <ArticleCard key={article.id} article={article} />
-              ))}
-            </div>
+            <HomeArticlesCarousel articles={articles} />
           </section>
         )}
 

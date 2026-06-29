@@ -1,6 +1,7 @@
 "use client"
 
 import { initiatePaymentSession, payWithWompi } from "@lib/data/cart"
+import { resolveCartChargeAmount } from "@lib/util/resolve-cart-charge-amount"
 import {
   fetchWompiCheckoutParams,
   getWompiSettings,
@@ -63,12 +64,7 @@ const WompiPayment = ({
     (s) => s.status === "pending" && s.provider_id === WOMPI_PROVIDER_ID
   )
 
-  const amount = useMemo(() => {
-    const fromSession = Number(session?.data?.amount)
-    if (Number.isFinite(fromSession) && fromSession > 0) return fromSession
-    const cartTotal = Number(cart.total ?? 0)
-    return cartTotal > 0 ? cartTotal : 0
-  }, [session?.data, cart.total])
+  const amount = useMemo(() => resolveCartChargeAmount(cart), [cart])
 
   const [sessionId, setSessionId] = useState<string | null>(
     (session?.id as string | undefined) ?? null

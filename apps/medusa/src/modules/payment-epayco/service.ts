@@ -211,7 +211,7 @@ class EpaycoProviderService extends AbstractPaymentProvider<EpaycoOptions> {
       return {
         action,
         data: {
-          session_id: tx.factura,
+          session_id: tx.factura ?? refPayco,
           amount: new BigNumber(Number(tx.valor ?? 0)),
         },
       }

@@ -24,8 +24,7 @@ const ARTICLE_COVERS: Record<string, string> = {
 }
 
 function coverUrl(path: string): string {
-  const base = (process.env.STOREFRONT_URL ?? "http://localhost:8000").replace(/\/$/, "")
-  return `${base}${path}`
+  return path.startsWith("/") ? path : `/${path}`
 }
 
 export default async function seedArticleImages({ container }: ExecArgs) {

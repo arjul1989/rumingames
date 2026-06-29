@@ -1,7 +1,6 @@
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 import { ContainerRegistrationKeys, OrderWorkflowEvents } from "@medusajs/framework/utils"
-import { resolveLineItemQuantity } from "../lib/fulfill-digital-order"
-import { resolveMoneyAmount } from "../lib/resolve-money-amount"
+import { resolveOrderEmailItems, resolveOrderTotal } from "../lib/resolve-order-money"
 import { sendEmail } from "../lib/email/send-email"
 import { storefrontUrl } from "../lib/storefront-url"
 
@@ -22,9 +21,17 @@ export default async function orderPlacedEmailHandler({
       "currency_code",
       "shipping_address.first_name",
       "shipping_address.country_code",
+      "total",
+      "subtotal",
       "summary.totals.current_order_total",
       "summary.totals.raw_current_order_total",
+      "payment_collections.amount",
+      "payment_collections.captured_amount",
+      "payment_collections.payments.amount",
+      "payment_collections.payments.captured_amount",
       "items.title",
+      "items.unit_price",
+      "items.raw_unit_price",
       "items.quantity",
       "items.raw_quantity",
       "items.detail.quantity",
@@ -44,14 +51,23 @@ export default async function orderPlacedEmailHandler({
         email?: string | null
         currency_code?: string
         shipping_address?: { first_name?: string | null; country_code?: string } | null
+        total?: unknown
+        subtotal?: unknown
         summary?: {
           totals?: {
             current_order_total?: unknown
             raw_current_order_total?: unknown
           }
         }
+        payment_collections?: Array<{
+          amount?: unknown
+          captured_amount?: unknown
+          payments?: Array<{ amount?: unknown; captured_amount?: unknown }>
+        }>
         items?: Array<{
           title?: string
+          unit_price?: unknown
+          raw_unit_price?: unknown
           quantity?: unknown
           raw_quantity?: { value?: string }
           detail?: {
@@ -74,10 +90,7 @@ export default async function orderPlacedEmailHandler({
   const cc =
     order.shipping_address?.country_code?.toLowerCase() ?? "co"
 
-  const total = resolveMoneyAmount(
-    order.summary?.totals?.current_order_total ??
-      order.summary?.totals?.raw_current_order_total
-  )
+  const total = resolveOrderTotal(order)
 
   try {
     await sendEmail(container, {
@@ -90,17 +103,7 @@ export default async function orderPlacedEmailHandler({
         email: order.email,
         total,
         currency_code: order.currency_code ?? "cop",
-        items: (order.items ?? []).map((item) => ({
-          title: item.title ?? "Producto",
-          quantity: resolveLineItemQuantity(item),
-          total: resolveMoneyAmount(
-            item.detail?.subtotal ??
-              item.detail?.raw_subtotal ??
-              item.subtotal ??
-              item.total ??
-              item.raw_total
-          ),
-        })),
+        items: resolveOrderEmailItems(order),
         order_url: storefrontUrl(`/account/orders/details/${order.id}`, cc),
         account_url: storefrontUrl("/account", cc),
       },

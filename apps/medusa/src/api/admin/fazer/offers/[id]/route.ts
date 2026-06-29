@@ -8,6 +8,8 @@ import { resolveFazerRate } from "../../../../../lib/fazer-config"
 import { applyFazerOfferVisibility } from "../../../../../lib/apply-fazer-offer-visibility"
 import { revalidateStorefrontCatalog } from "../../../../../lib/storefront-revalidate"
 import { syncMedusaVariantFromFazer } from "../../../../../lib/sync-medusa-variant"
+import { resolveOfferCopForCountry } from "../../../../../lib/resolve-offer-pricing"
+import { getCountryPricingConfig } from "../../../../../lib/country-pricing-config"
 
 const STATUSES = ["active", "inactive", "out_of_stock"] as const
 
@@ -15,20 +17,53 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const supplier = req.scope.resolve<SupplierModuleService>(SUPPLIER_MODULE)
   const body = (req.body ?? {}) as {
     margin_pct?: number
+    retail_price_usd?: number | null
+    commission_fixed_local?: number | null
     enabled?: boolean
     status?: string
   }
 
   const offer = await supplier.retrieveFazerOffer(req.params.id)
   const update: Record<string, unknown> = { id: offer.id }
+  const countryPricing = await getCountryPricingConfig(req.scope, "co")
+
+  const nextRetailUsd =
+    body.retail_price_usd !== undefined
+      ? body.retail_price_usd
+      : offer.retail_price_usd
+  const nextMargin =
+    typeof body.margin_pct === "number" && !Number.isNaN(body.margin_pct)
+      ? body.margin_pct
+      : offer.margin_pct
+  const nextCommissionOverride =
+    body.commission_fixed_local !== undefined
+      ? body.commission_fixed_local
+      : offer.commission_fixed_local
 
   if (typeof body.margin_pct === "number" && !Number.isNaN(body.margin_pct)) {
     update.margin_pct = body.margin_pct
-    const rate = await resolveFazerRate(req.scope)
-    update.sale_price_usd = salePriceUsd(offer.wholesale_price_usd, body.margin_pct)
-    update.sale_price_cop = computeCopPrice(offer.wholesale_price_usd, rate, body.margin_pct)
-    update.usd_cop_rate = rate
   }
+  if (body.retail_price_usd !== undefined) {
+    update.retail_price_usd = body.retail_price_usd
+  }
+  if (body.commission_fixed_local !== undefined) {
+    update.commission_fixed_local = body.commission_fixed_local
+  }
+
+  if (
+    body.margin_pct !== undefined ||
+    body.retail_price_usd !== undefined
+  ) {
+    const priced = await resolveOfferCopForCountry(req.scope, {
+      wholesale_price_usd: offer.wholesale_price_usd,
+      retail_price_usd: nextRetailUsd,
+      margin_pct: nextMargin,
+    })
+    update.sale_price_usd = priced.sale_price_usd
+    update.sale_price_cop = priced.cop
+    update.usd_cop_rate = countryPricing.fx_rate
+  }
+
   if (typeof body.enabled === "boolean") {
     update.enabled = body.enabled
     if (!body.enabled) update.status = "inactive"
@@ -44,8 +79,13 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const mappings = await supplier.listSupplierProductMappings({ fazer_sku_id: offer.fazer_sku_id })
   const mapping = mappings[0]
   if (mapping) {
-    const margin = (update.margin_pct as number) ?? mapping.margin_pct
-    const rate = (update.usd_cop_rate as number) ?? (await resolveFazerRate(req.scope))
+    const margin = nextMargin
+    const rate = countryPricing.fx_rate
+    const priced = await resolveOfferCopForCountry(req.scope, {
+      wholesale_price_usd: offer.wholesale_price_usd,
+      retail_price_usd: nextRetailUsd,
+      margin_pct: margin,
+    })
     const cop =
       (update.sale_price_cop as number) ??
       computeCopPrice(offer.wholesale_price_usd, rate, margin)
@@ -63,7 +103,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       enabled,
       status,
       last_synced_price_cop: cop,
-      sale_price_usd: salePriceUsd(offer.wholesale_price_usd, margin),
+      sale_price_usd: priced.sale_price_usd,
       usd_cop_rate: rate,
       face_value_label: offer.face_value_label,
     })

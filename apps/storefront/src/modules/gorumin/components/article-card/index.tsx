@@ -1,5 +1,6 @@
 import Image from "next/image"
 import type { Article } from "@lib/data/cms"
+import { resolveCmsMediaUrl } from "@lib/cms-media"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 function formatDate(value: string | null): string {
@@ -17,15 +18,17 @@ function formatDate(value: string | null): string {
 
 // News article preview card (US-7.2 / US-7.3).
 export default function ArticleCard({ article }: { article: Article }) {
+  const coverImage = resolveCmsMediaUrl(article.cover_image)
+
   return (
     <LocalizedClientLink
       href={`/noticias/${article.slug}`}
       className="group flex flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-container/40 transition-all duration-500 hover:-translate-y-1 hover:border-primary/50"
     >
       <div className="relative aspect-video w-full overflow-hidden bg-surface-container-low">
-        {article.cover_image ? (
+        {coverImage ? (
           <Image
-            src={article.cover_image}
+            src={coverImage}
             alt={article.title}
             fill
             sizes="(max-width: 768px) 100vw, 400px"

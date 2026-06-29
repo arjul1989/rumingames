@@ -1,5 +1,6 @@
 "use client"
 import { RadioGroup } from "@headlessui/react"
+import { isCheckoutStepOpen } from "@lib/checkout-steps"
 import { isStripeLike, isMercadoPago, paymentInfoMap } from "@lib/constants"
 import { initiatePaymentSession } from "@lib/data/cart"
 import { CheckCircleSolid, CreditCard } from "@medusajs/icons"
@@ -42,7 +43,8 @@ const Payment = ({
   const router = useRouter()
   const pathname = usePathname()
 
-  const isOpen = searchParams.get("step") === "payment"
+  const currentStep = searchParams.get("step")
+  const isOpen = isCheckoutStepOpen("payment", currentStep)
 
   const setPaymentMethod = async (method: string) => {
     setError(null)

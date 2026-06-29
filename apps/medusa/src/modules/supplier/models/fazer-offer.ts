@@ -26,6 +26,8 @@ const FazerOffer = model.define("fazer_offer", {
     .default("active"),
   sale_price_cop: model.float().nullable(),
   sale_price_usd: model.float().nullable(),
+  retail_price_usd: model.float().nullable(),
+  commission_fixed_local: model.float().nullable(),
   usd_cop_rate: model.float().nullable(),
   medusa_variant_id: model.text().nullable(),
   medusa_product_id: model.text().nullable(),

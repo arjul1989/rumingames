@@ -2,6 +2,7 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules, PaymentWebhookEvents } from "@medusajs/framework/utils"
 import { verifyWompiEventChecksum } from "../../../modules/payment-wompi/lib/integrity"
 import { clientIp, rateLimit } from "../../../lib/rate-limit"
+import { webhookSecretRequired } from "../../../lib/webhook-auth"
 import { emitMonitorAlert } from "../../../lib/monitoring"
 import { logSupportTrace } from "../../../lib/support/log-support-trace"
 
@@ -25,6 +26,12 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   }
 
   const secret = process.env.WOMPI_EVENTS_SECRET
+  const secretCheck = webhookSecretRequired(secret, "Wompi")
+  if (!secretCheck.ok) {
+    logger.error("Wompi webhook: secret missing in production.")
+    return res.status(secretCheck.status).json({ message: secretCheck.message })
+  }
+
   const checksum =
     (req.headers["x-event-checksum"] as string | undefined) ??
     body.signature?.checksum
@@ -50,7 +57,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   } else if (secret) {
     logger.warn("Wompi webhook: missing checksum fields; rejecting.")
     return res.status(401).json({ message: "Invalid signature" })
-  } else {
+  } else if (process.env.NODE_ENV !== "production") {
     logger.warn("Wompi webhook: WOMPI_EVENTS_SECRET not set; skipping verification (dev).")
   }
 

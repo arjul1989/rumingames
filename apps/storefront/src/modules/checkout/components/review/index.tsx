@@ -1,5 +1,6 @@
 "use client"
 
+import { isCheckoutStepOpen } from "@lib/checkout-steps"
 import { checkoutLabels } from "@lib/i18n/es-co"
 import type { MpPaymentSettings } from "@lib/mp-payment-settings.shared"
 import { Heading, Text, clx } from "@modules/common/components/ui"
@@ -18,7 +19,8 @@ const Review = ({
 }) => {
   const searchParams = useSearchParams()
 
-  const isOpen = searchParams.get("step") === "review"
+  const currentStep = searchParams.get("step")
+  const isOpen = isCheckoutStepOpen("review", currentStep)
 
   const paidByGiftcard = !!(
     (cart as unknown as Record<string, unknown>)?.gift_cards &&

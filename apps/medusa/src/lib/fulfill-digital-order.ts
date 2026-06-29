@@ -1,8 +1,8 @@
 import { MedusaContainer } from "@medusajs/framework"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { emitMonitorAlert } from "./monitoring"
+import { sendDigitalCodesEmail } from "./send-digital-codes-email"
 import { sendEmail } from "./email/send-email"
-import { storefrontUrl } from "./storefront-url"
 import { logSupportTrace } from "./support/log-support-trace"
 import { SUPPLIER_MODULE } from "../modules/supplier"
 import { FAZER_MODULE } from "../modules/fazer"
@@ -75,6 +75,74 @@ export interface FulfillResult {
 
 const defaultSleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
+export function sortDeliveriesById<T extends { id: string }>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => a.id.localeCompare(b.id))
+}
+
+/** Persists one digital_delivery row per unit; skips units already delivered. */
+export async function persistDeliveredCodesForLineItem(
+  delivery: DigitalDeliveryModuleService,
+  options: {
+    orderId: string
+    lineItemId: string
+    itemTitle: string
+    fazerOrderId: string
+    codes: string[]
+    expectedQuantity: number
+    existingDeliveries?: Array<{ id: string; status: string }>
+  }
+): Promise<{ newCodes: Array<{ product: string; code: string }>; unitsDelivered: number }> {
+  const { orderId, lineItemId, itemTitle, fazerOrderId, codes, expectedQuantity } =
+    options
+  const rows = sortDeliveriesById(options.existingDeliveries ?? [])
+
+  if (codes.length < expectedQuantity) {
+    throw new Error(
+      `Expected ${expectedQuantity} code(s), received ${codes.length} from Fazer order ${fazerOrderId}.`
+    )
+  }
+
+  const newCodes: Array<{ product: string; code: string }> = []
+  let unitsDelivered = 0
+
+  for (let unitIndex = 0; unitIndex < expectedQuantity; unitIndex++) {
+    const code = codes[unitIndex]
+    if (!code) {
+      throw new Error(
+        `Missing code at index ${unitIndex} for Fazer order ${fazerOrderId}.`
+      )
+    }
+
+    let row = rows[unitIndex]
+    if (row?.status === "delivered") {
+      continue
+    }
+
+    if (!row) {
+      const created = await delivery.createDigitalDeliveries([
+        { order_id: orderId, line_item_id: lineItemId, status: "processing" },
+      ])
+      row = created[0]
+      rows[unitIndex] = row
+    } else {
+      await delivery.updateDigitalDeliveries({ id: row.id, status: "processing" })
+    }
+
+    await delivery.storeCode(row.id, code, fazerOrderId)
+    newCodes.push({ product: itemTitle, code })
+    unitsDelivered++
+  }
+
+  return { newCodes, unitsDelivered }
+}
+
+export function countDeliveredUnits(
+  deliveries: Array<{ status: string }>,
+  expectedQuantity: number
+): boolean {
+  return deliveries.filter((d) => d.status === "delivered").length >= expectedQuantity
+}
+
 // Fulfills the digital line items of a paid order against Fazer Cards
 // (US-2.4 / RUM-19): one Fazer order per line item with a stable idempotency
 // key, encrypted code storage, customer email, and admin alert on failure.
@@ -137,6 +205,7 @@ export async function fulfillDigitalOrder(
   let delivered = 0
   let failed = 0
   let skipped = 0
+  const codesToEmail: Array<{ product: string; code: string }> = []
 
   for (const item of items) {
     const mapping = item.variant_id ? mappingByVariant.get(item.variant_id) : undefined
@@ -145,23 +214,17 @@ export async function fulfillDigitalOrder(
       continue
     }
 
-    // Idempotency: reuse the existing delivery row for this line item.
-    const existing = await delivery.listDigitalDeliveries({
-      order_id: orderId,
-      line_item_id: item.id,
-    })
-    let row = existing[0]
-    if (row?.status === "delivered") {
+    const qty = resolveLineItemQuantity(item)
+    const existingDeliveries = sortDeliveriesById(
+      await delivery.listDigitalDeliveries({
+        order_id: orderId,
+        line_item_id: item.id,
+      })
+    )
+
+    if (countDeliveredUnits(existingDeliveries, qty)) {
       skipped++
       continue
-    }
-    if (!row) {
-      const created = await delivery.createDigitalDeliveries([
-        { order_id: orderId, line_item_id: item.id, status: "processing" },
-      ])
-      row = created[0]
-    } else {
-      await delivery.updateDigitalDeliveries({ id: row.id, status: "processing" })
     }
 
     const idempotencyKey = `${orderId}:${item.id}`
@@ -176,7 +239,7 @@ export async function fulfillDigitalOrder(
       try {
         let fazerOrder = await fazer.createOrder({
           sku_id: mapping.fazer_sku_id,
-          quantity: resolveLineItemQuantity(item),
+          quantity: qty,
           idempotency_key: idempotencyKey,
           external_id: externalId,
         })
@@ -189,7 +252,7 @@ export async function fulfillDigitalOrder(
           method: "POST",
           request: {
             sku_id: mapping.fazer_sku_id,
-            quantity: resolveLineItemQuantity(item),
+            quantity: qty,
             idempotency_key: idempotencyKey,
           },
           response: fazerOrder,
@@ -219,21 +282,26 @@ export async function fulfillDigitalOrder(
           )
         }
 
-        const code = fazerOrder.codes?.[0]
-        if (!code) {
-          throw new Error(`Fazer order ${fazerOrder.id} completed without a code.`)
+        const codes = fazerOrder.codes ?? []
+        if (!codes.length) {
+          throw new Error(`Fazer order ${fazerOrder.id} completed without codes.`)
         }
 
-        await delivery.storeCode(row.id, code, fazerOrder.id)
-        await sendCustomerCode(
-          container,
-          order.email ?? "",
-          item.title,
-          code,
-          order.display_id ?? undefined,
-          orderId
+        const { newCodes, unitsDelivered } = await persistDeliveredCodesForLineItem(
+          delivery,
+          {
+            orderId,
+            lineItemId: item.id,
+            itemTitle: item.title,
+            fazerOrderId: fazerOrder.id,
+            codes,
+            expectedQuantity: qty,
+            existingDeliveries,
+          }
         )
-        delivered++
+
+        codesToEmail.push(...newCodes)
+        delivered += unitsDelivered
         success = true
       } catch (e) {
         lastError = (e as Error).message
@@ -245,11 +313,14 @@ export async function fulfillDigitalOrder(
 
     if (!success) {
       failed++
-      await delivery.updateDigitalDeliveries({
-        id: row.id,
-        status: "failed",
-        error_message: lastError,
-      })
+      const failedRow = existingDeliveries.find((row) => row.status !== "delivered")
+      if (failedRow) {
+        await delivery.updateDigitalDeliveries({
+          id: failedRow.id,
+          status: "failed",
+          error_message: lastError,
+        })
+      }
       await alertAdmin(
         container,
         order.display_id ?? undefined,
@@ -260,37 +331,19 @@ export async function fulfillDigitalOrder(
     }
   }
 
+  if (codesToEmail.length > 0 && order.email) {
+    await sendDigitalCodesEmail(container, {
+      to: order.email,
+      display_id: order.display_id ?? orderId,
+      order_id: orderId,
+      codes: codesToEmail,
+    })
+  }
+
   logger.info(
     `Fulfillment for order ${orderId}: ${delivered} delivered, ${failed} failed, ${skipped} skipped.`
   )
   return { delivered, failed, skipped }
-}
-
-async function sendCustomerCode(
-  container: MedusaContainer,
-  to: string,
-  productTitle: string,
-  code: string,
-  displayId?: number | string,
-  orderId?: string
-) {
-  if (!to) return
-  const cc = "co"
-  const ordersUrl = orderId
-    ? storefrontUrl(`/account/orders/details/${orderId}`, cc)
-    : storefrontUrl("/account/orders", cc)
-
-  await sendEmail(container, {
-    to,
-    template: "digital-code-delivered",
-    data: {
-      product: productTitle,
-      display_id: displayId ?? "",
-      code,
-      orders_url: ordersUrl,
-      account_url: storefrontUrl("/account", cc),
-    },
-  })
 }
 
 async function alertAdmin(

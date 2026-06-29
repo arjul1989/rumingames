@@ -2,7 +2,7 @@ import { Metadata } from "next"
 
 import { listProducts } from "@lib/data/products"
 import { filterStorefrontProducts } from "@lib/storefront-catalog"
-import { listArticles, listStreamers } from "@lib/data/cms"
+import { listArticles, listHomeFeaturedGames, listStreamers } from "@lib/data/cms"
 import { absoluteUrl, localizedAlternates, openGraphBase, SITE_NAME } from "@lib/seo"
 import HomeTemplate from "@modules/gorumin/templates/home"
 import JsonLd from "@modules/common/components/json-ld"
@@ -29,16 +29,16 @@ export default async function Home(props: {
 }) {
   const { countryCode } = await props.params
 
-  const [productsResult, articlesResult, featuredStreamers] = await Promise.all(
-    [
+  const [productsResult, articlesResult, featuredGamesResult, featuredStreamers] =
+    await Promise.all([
       listProducts({
         countryCode,
         queryParams: { limit: 8 },
       }).catch(() => ({ response: { products: [], count: 0 } })),
-      listArticles({ limit: 6 }),
+      listArticles({ limit: 3 }),
+      listHomeFeaturedGames(),
       listStreamers({ featured: true, limit: 12 }),
-    ]
-  )
+    ])
 
   // Fall back to all streamers if none are flagged as featured yet.
   const streamers = featuredStreamers.streamers.length
@@ -78,6 +78,7 @@ export default async function Home(props: {
         products={filterStorefrontProducts(productsResult.response.products)}
         articles={articlesResult.articles}
         streamers={streamers}
+        featuredGames={featuredGamesResult.featured_games}
       />
     </>
   )

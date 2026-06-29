@@ -112,11 +112,12 @@ MP_CALLBACK_URL: "${MP_CALLBACK_URL:-${STOREFRONT_BASE_URL}/co/checkout/pending}
 MP_LOCALE: es-CO
 MP_STATEMENT_DESCRIPTOR: GORUMIN
 EOF
-  [[ -n "${REDIS_URL:-}" ]] && echo "REDIS_URL: \"${REDIS_URL}\"" >>"$env_file"
+  [[ -n "${REDIS_URL:-}" && "${REDIS_URL}" != *"localhost"* && "${REDIS_URL}" != *"127.0.0.1"* ]] && echo "REDIS_URL: \"${REDIS_URL}\"" >>"$env_file"
   [[ -n "${FAZER_API_KEY:-}" ]] && echo "FAZER_API_KEY: \"${FAZER_API_KEY}\"" >>"$env_file"
   [[ -n "${FAZER_BASE_URL:-}" ]] && echo "FAZER_BASE_URL: \"${FAZER_BASE_URL}\"" >>"$env_file"
   [[ -n "${FAZER_BALANCE_ALERT_THRESHOLD:-}" ]] && echo "FAZER_BALANCE_ALERT_THRESHOLD: \"${FAZER_BALANCE_ALERT_THRESHOLD}\"" >>"$env_file"
   [[ -n "${FAZER_WEBHOOK_SECRET:-}" ]] && echo "FAZER_WEBHOOK_SECRET: \"${FAZER_WEBHOOK_SECRET}\"" >>"$env_file"
+  [[ -n "${FAZER_WEBHOOK_SIGNATURE_SECRET:-}" ]] && echo "FAZER_WEBHOOK_SIGNATURE_SECRET: \"${FAZER_WEBHOOK_SIGNATURE_SECRET}\"" >>"$env_file"
   [[ -n "${FAZER_WEBHOOK_SIGNATURE_HEADER:-}" ]] && echo "FAZER_WEBHOOK_SIGNATURE_HEADER: \"${FAZER_WEBHOOK_SIGNATURE_HEADER}\"" >>"$env_file"
   [[ -n "${MP_ACCESS_TOKEN:-}" ]] && echo "MP_ACCESS_TOKEN: \"${MP_ACCESS_TOKEN}\"" >>"$env_file"
   [[ -n "${MP_PUBLIC_KEY:-}" ]] && echo "MP_PUBLIC_KEY: \"${MP_PUBLIC_KEY}\"" >>"$env_file"
@@ -158,11 +159,75 @@ EOF
   [[ -n "${EPAYCO_THREE_DS_AUTH_TYPE:-}" ]] && echo "EPAYCO_THREE_DS_AUTH_TYPE: \"${EPAYCO_THREE_DS_AUTH_TYPE}\"" >>"$env_file"
   echo "MOCK_EPAYCO: \"${MOCK_EPAYCO:-false}\"" >>"$env_file"
 
+  run_medusa_migrate() {
+    local img="$1"
+    local job="${MEDUSA_SERVICE:-gorumin-medusa}-migrate"
+
+    if command -v cloud-sql-proxy &>/dev/null; then
+      local proxy_port="${MIGRATE_PROXY_PORT:-5434}"
+      local proxy_pid=""
+      echo "==> DB migrations (cloud-sql-proxy on 127.0.0.1:${proxy_port})"
+      cloud-sql-proxy "$CONN_NAME" \
+        --port "$proxy_port" \
+        --quota-project "$GCP_PROJECT_ID" \
+        --gcloud-auth &
+      proxy_pid=$!
+      trap 'kill "$proxy_pid" 2>/dev/null || true' RETURN
+      for _ in $(seq 1 30); do
+        (echo >/dev/tcp/127.0.0.1/"$proxy_port") &>/dev/null && break
+        sleep 0.5
+      done
+      (
+        cd "$ROOT/apps/medusa"
+        DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@127.0.0.1:${proxy_port}/${DB_NAME}" \
+          NODE_ENV=production \
+          npx medusa db:migrate
+      )
+      kill "$proxy_pid" 2>/dev/null || true
+      wait "$proxy_pid" 2>/dev/null || true
+      return
+    fi
+
+    echo "==> DB migrations ($job via Cloud Run Job)"
+    if gcloud run jobs describe "$job" --region "$GCP_REGION" &>/dev/null; then
+      gcloud run jobs update "$job" \
+        --image "$img" \
+        --region "$GCP_REGION" \
+        --command npx \
+        --args medusa,db:migrate \
+        --set-cloudsql-instances "$CONN_NAME" \
+        --env-vars-file "$env_file" \
+        --memory 2Gi \
+        --cpu 2 \
+        --task-timeout 3600 \
+        --max-retries 0 \
+        --quiet
+    else
+      gcloud run jobs create "$job" \
+        --image "$img" \
+        --region "$GCP_REGION" \
+        --command npx \
+        --args medusa,db:migrate \
+        --set-cloudsql-instances "$CONN_NAME" \
+        --env-vars-file "$env_file" \
+        --memory 2Gi \
+        --cpu 2 \
+        --task-timeout 3600 \
+        --max-retries 0 \
+        --quiet
+    fi
+    gcloud run jobs execute "$job" --region "$GCP_REGION" --wait --quiet
+  }
+
+  run_medusa_migrate "$img"
+
   gcloud run deploy "${MEDUSA_SERVICE:-gorumin-medusa}" \
     --image "$img" \
     --region "$GCP_REGION" \
     --platform managed \
     --port 9000 \
+    --command npx \
+    --args medusa,start \
     --min-instances 0 \
     --max-instances 5 \
     --memory 1Gi \

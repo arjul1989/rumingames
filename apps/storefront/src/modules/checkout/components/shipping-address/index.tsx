@@ -1,6 +1,10 @@
 import { addressLabels } from "@lib/i18n/es-co"
+import {
+  digitsOnly,
+  formatCoIdentification,
+  formatCoPhone,
+} from "@lib/util/co-locale-input"
 import { HttpTypes } from "@medusajs/types"
-import { Container } from "@modules/common/components/ui"
 import Input from "@modules/common/components/input"
 import NativeSelect from "@modules/common/components/native-select"
 import { mapKeys } from "lodash"
@@ -31,12 +35,16 @@ const ShippingAddress = ({
     "shipping_address.city": cart?.shipping_address?.city || "",
     "shipping_address.country_code": cart?.shipping_address?.country_code || "",
     "shipping_address.province": cart?.shipping_address?.province || "",
-    "shipping_address.phone": cart?.shipping_address?.phone || "",
+    "shipping_address.phone": formatCoPhone(
+      cart?.shipping_address?.phone || ""
+    ),
     email: cart?.email || "",
     payer_identification_type:
       (meta.payer_identification_type as string) || "CC",
-    payer_identification_number:
+    payer_identification_number: formatCoIdentification(
       (meta.payer_identification_number as string) || "",
+      (meta.payer_identification_type as string) || "CC"
+    ),
   })
 
   const countriesInRegion = useMemo(
@@ -65,7 +73,7 @@ const ShippingAddress = ({
         "shipping_address.city": address?.city || "",
         "shipping_address.country_code": address?.country_code || "",
         "shipping_address.province": address?.province || "",
-        "shipping_address.phone": address?.phone || "",
+        "shipping_address.phone": formatCoPhone(address?.phone || ""),
       }))
     }
 
@@ -92,17 +100,50 @@ const ShippingAddress = ({
       HTMLInputElement | HTMLInputElement | HTMLSelectElement
     >
   ) => {
+    const { name, value } = e.target
+
+    if (name === "shipping_address.phone") {
+      setFormData({
+        ...formData,
+        [name]: formatCoPhone(value),
+      })
+      return
+    }
+
+    if (name === "payer_identification_number") {
+      setFormData({
+        ...formData,
+        [name]: formatCoIdentification(
+          value,
+          formData.payer_identification_type
+        ),
+      })
+      return
+    }
+
+    if (name === "payer_identification_type") {
+      setFormData({
+        ...formData,
+        payer_identification_type: value,
+        payer_identification_number: formatCoIdentification(
+          formData.payer_identification_number,
+          value
+        ),
+      })
+      return
+    }
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     })
   }
 
   return (
     <>
       {customer && (addressesInRegion?.length || 0) > 0 && (
-        <Container className="mb-6 flex flex-col gap-y-4 p-5">
-          <p className="text-small-regular">
+        <div className="hyper-glass mb-6 flex flex-col gap-y-4 rounded-xl border border-white/10 p-5">
+          <p className="text-small-regular text-on-surface-variant">
             {addressLabels.savedAddressPrompt(customer.first_name ?? "")}
           </p>
           <AddressSelect
@@ -114,7 +155,7 @@ const ShippingAddress = ({
             }
             onSelect={setFormAddress}
           />
-        </Container>
+        </div>
       )}
       <div className="grid grid-cols-1 gap-4 small:grid-cols-2">
         <Input
@@ -150,30 +191,26 @@ const ShippingAddress = ({
           label={addressLabels.phone}
           name="shipping_address.phone"
           autoComplete="tel"
+          inputMode="numeric"
           value={formData["shipping_address.phone"]}
           onChange={handleChange}
           required
           data-testid="shipping-phone-input"
         />
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-mono uppercase tracking-widest text-on-surface-variant/60">
-            {addressLabels.documentType}
-            <span className="text-rose-500">*</span>
-          </label>
-          <NativeSelect
-            name="payer_identification_type"
-            value={formData.payer_identification_type}
-            onChange={handleChange}
-            required
-            data-testid="shipping-document-type-select"
-          >
-            {DOCUMENT_TYPES.map(({ value, label }) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </NativeSelect>
-        </div>
+        <NativeSelect
+          label={addressLabels.documentType}
+          name="payer_identification_type"
+          value={formData.payer_identification_type}
+          onChange={handleChange}
+          required
+          data-testid="shipping-document-type-select"
+        >
+          {DOCUMENT_TYPES.map(({ value, label }) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </NativeSelect>
         <Input
           label={addressLabels.documentNumber}
           name="payer_identification_number"
@@ -213,6 +250,7 @@ const ShippingAddress = ({
           data-testid="shipping-province-input"
         />
         <CountrySelect
+          label={addressLabels.country}
           name="shipping_address.country_code"
           autoComplete="country"
           region={cart?.region}

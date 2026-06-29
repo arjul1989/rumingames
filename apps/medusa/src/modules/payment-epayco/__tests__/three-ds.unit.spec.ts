@@ -26,7 +26,6 @@ describe("ePayco 3DS helpers", () => {
     const payload = { data: { resultCode: "ChallengeShopper" } }
     expect(
       getEpaycoThreeDsPayload({
-        success: true,
         "3DS": payload,
       })
     ).toEqual(payload)

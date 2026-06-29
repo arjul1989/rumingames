@@ -1,6 +1,7 @@
 "use client"
 
 import { initiatePaymentSession, payWithEpayco } from "@lib/data/cart"
+import { resolveCartChargeAmount } from "@lib/util/resolve-cart-charge-amount"
 import {
   createEpaycoCardCharge,
   fetchEpaycoTransaction,
@@ -55,12 +56,7 @@ const EpaycoCardPayment = ({
     (s) => s.status === "pending" && s.provider_id === EPAYCO_PROVIDER_ID
   )
 
-  const amount = useMemo(() => {
-    const fromSession = Number(session?.data?.amount)
-    if (Number.isFinite(fromSession) && fromSession > 0) return fromSession
-    const cartTotal = Number(cart.total ?? 0)
-    return cartTotal > 0 ? cartTotal : 0
-  }, [session?.data, cart.total])
+  const amount = useMemo(() => resolveCartChargeAmount(cart), [cart])
 
   useEffect(() => {
     let cancelled = false

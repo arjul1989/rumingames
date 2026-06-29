@@ -130,13 +130,24 @@ class MercadoPagoProviderService extends AbstractPaymentProvider<MercadoPagoOpti
   }
 
   async authorizePayment(input: AuthorizePaymentInput): Promise<AuthorizePaymentOutput> {
-    const data = input.data ?? {}
+    let data = { ...(input.data ?? {}) }
 
     if (data.mp_payment_id) {
-      const existing = await this.client_.getPayment(data.mp_payment_id as number)
-      return {
-        status: medusaAuthorizeStatusFromMpPayment(existing),
-        data: this.mergePayment(data, existing),
+      try {
+        const existing = await this.client_.getPayment(data.mp_payment_id as number)
+        return {
+          status: medusaAuthorizeStatusFromMpPayment(existing),
+          data: this.mergePayment(data, existing),
+        }
+      } catch (e) {
+        if (!isMockMpEnabled()) {
+          throw e
+        }
+        this.logger_.warn(
+          `Stale mp_payment_id ${data.mp_payment_id} (${(e as Error).message}); creating a new payment.`
+        )
+        const { mp_payment_id: _stale, ...rest } = data
+        data = rest
       }
     }
 

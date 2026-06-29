@@ -6,7 +6,7 @@ const CountryPricingConfig = model.define("country_pricing_config", {
   country_code: model.text(),
   fx_rate: model.float().default(4000),
   local_currency_code: model.text().default("cop"),
-  taxes: model.json().default([]),
+  taxes: model.json().default({} as Record<string, unknown>),
 })
 
 export default CountryPricingConfig

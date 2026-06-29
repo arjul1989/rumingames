@@ -64,6 +64,23 @@ export interface ArticleDetail extends Article {
   tags: ArticleTag[]
 }
 
+export interface FeaturedGame {
+  id: string
+  title: string
+  slug: string
+  excerpt: string | null
+  body: string | null
+  cover_image: string | null
+  status: ArticleStatus
+  published_at: string | null
+  related_product_ids: string[]
+  home_position: number | null
+}
+
+export interface FeaturedGameDetail extends FeaturedGame {
+  related_products: RelatedProduct[]
+}
+
 export interface StreamerDetail extends Streamer {
   articles: Article[]
 }
@@ -77,6 +94,25 @@ interface ListArticlesParams {
   limit?: number
   offset?: number
   categoryId?: string
+}
+
+export const listHomeFeaturedGames = async (): Promise<{
+  featured_games: FeaturedGameDetail[]
+  count: number
+}> => {
+  try {
+    const res = await sdk.client.fetch<{
+      featured_games: FeaturedGameDetail[]
+      count: number
+    }>("/store/featured-games/home", {
+      method: "GET",
+      next: { revalidate: 60 },
+      cache: "force-cache",
+    })
+    return { featured_games: res.featured_games ?? [], count: res.count ?? 0 }
+  } catch {
+    return { featured_games: [], count: 0 }
+  }
 }
 
 export const listArticles = async ({

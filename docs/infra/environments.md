@@ -108,7 +108,7 @@ Artifact Registry (`gorumin`) se **comparte** con producción; las imágenes se 
 | `cp infra/gcp/env.sandbox.example infra/gcp/.env.sandbox` | Plantilla de secrets |
 | `./infra/gcp/deploy-sandbox.sh` | Build + deploy Medusa + Storefront |
 | `./infra/gcp/remap-domains-sandbox.sh` | Mapea dominios Cloud Run |
-| `./infra/gcp/sync-sandbox.sh` | Sincroniza CMS/catálogo en DB sandbox |
+| `./infra/gcp/sync-sandbox.sh` | Sincroniza CMS/catálogo en DB sandbox (manual; también corre en CI tras deploy a `develop`) |
 
 ### Credenciales sandbox
 
@@ -134,11 +134,84 @@ Ya desplegado. Scripts existentes:
 | `./infra/gcp/remap-domains.sh` | gorumin.com / api.gorumin.com |
 | `./infra/gcp/sync-prod.sh` | Sync contenido prod |
 
+### Webhooks en proveedores (producción)
+
+Registra en cada dashboard con las claves **live** de producción:
+
+| Proveedor | URL | Secreto en Medusa |
+|-----------|-----|-------------------|
+| Mercado Pago | `https://api.gorumin.com/hooks/mercadopago` | `MP_WEBHOOK_SECRET` |
+| Wompi | `https://api.gorumin.com/hooks/wompi` | `WOMPI_EVENTS_SECRET` |
+| ePayco | `https://api.gorumin.com/hooks/epayco` | `EPAYCO_CONFIRMATION_SECRET` |
+| Fazer Cards | `https://api.gorumin.com/hooks/fazer` | `FAZER_WEBHOOK_SIGNATURE_SECRET` (`whsec_…`) |
+
+**Fazer Cards (panel reseller → Settings → Webhooks)**
+
+1. URL sandbox: `https://api.sbx.gorumin.com/hooks/fazer` · producción: `https://api.gorumin.com/hooks/fazer`
+2. Copia el **Signing secret** del panel → `FAZER_WEBHOOK_SIGNATURE_SECRET=whsec_…` en `.env.sandbox` / `.env.production`
+3. Header: `X-Webhook-Signature: sha256=<hex>` → `FAZER_WEBHOOK_SIGNATURE_HEADER=x-webhook-signature`
+4. Prueba local/sandbox: `./scripts/test-fazer-webhook-sandbox.sh`
+5. El botón **Send test** del panel solo llega a la URL guardada (si pusiste prod, no sandbox).
+
+### IP fija de salida (whitelist en Fazer, Brevo, etc.)
+
+Cloud Run **no tiene IP de salida fija** por defecto: las llamadas salientes (Fazer API, Brevo, Binance, Wompi…) usan el pool NAT compartido de Google.
+
+| Necesidad | Solución |
+|-----------|----------|
+| Whitelist de IP en Fazer u otro proveedor | **Cloud NAT + IP estática regional** + VPC connector en `gorumin-medusa` |
+| Solo proteger credenciales | Mantener keys en Secret Manager / env de Cloud Run (nunca en el frontend) |
+
+Pasos resumidos (GCP, una vez):
+
+1. VPC `gorumin-prod` + subred `10.8.0.0/28`
+2. IP estática regional `gorumin-egress-ip`
+3. Cloud Router + Cloud NAT (solo esa IP para la subred)
+4. Serverless VPC Access connector → asociar a Cloud Run Medusa (`--vpc-egress all-traffic`)
+5. Registrar `gorumin-egress-ip` en Fazer / Brevo / Binance según cada panel
+
+Detalle Brevo: `docs/email/brevo-setup.md` (misma arquitectura aplica a Fazer).
+
+### Seguridad de credenciales y APIs
+
+| Activo | Dónde vive | Expuesto al navegador |
+|--------|------------|------------------------|
+| `FAZER_API_KEY` | Solo Medusa (Cloud Run env) | No — header `X-Api-Key` server→Fazer |
+| `MP_ACCESS_TOKEN`, Wompi/ePayco private keys | Solo Medusa | No |
+| `MP_PUBLIC_KEY`, Wompi `pub_*` | Store API / Brick | Sí (esperado para checkout) |
+| `MEDUSA_PUBLISHABLE_KEY` | Storefront build | Sí (solo operaciones store permitidas) |
+| Códigos digitales | DB cifrados (`DIGITAL_CODE_ENCRYPTION_KEY`) | Solo tras login + email verificado |
+
+**Controles ya implementados**
+
+- Webhooks: firma HMAC/checksum + rate limit + deduplicación; en `NODE_ENV=production` sin secreto → 503.
+- Admin custom: RBAC por permiso (`fazer`, `supplier`, `refunds`, …).
+- `/store/orders/:id/digital-codes`: sesión cliente + ownership + email verificado.
+- Mocks (`/dev/mock-mp`, `MOCK_*`): bloqueados en producción.
+- Tráfico cliente↔GCP: HTTPS (TLS). Credenciales de proveedor no viajan al browser.
+
+**Riesgo residual**
+
+- Sin Cloud NAT, la IP de salida puede cambiar → whitelist en Fazer puede romperse tras escalado de Google.
+- Publishable key + store API: abuso de carrito/checkout posible; mitigar con rate limits del BFF y monitoreo.
+- Rotar `FAZER_API_KEY` / webhook secret si hubo exposición accidental (nunca commitear `.env.production`).
+
 ---
 
 ## Checklist: montar sandbox por primera vez
 
 Pasos que **debes hacer tú** (no automatizables desde el repo):
+
+| Paso | Estado |
+|------|--------|
+| A.3 DNS (`sbx`, `api.sbx`) | ✅ Hecho |
+| B. Secrets / `.env.sandbox` | ✅ Generado (revisar claves de pago) |
+| C. Bootstrap + deploy | 🔄 Medusa en redeploy |
+| D. Admin sandbox | ⏳ Tras Medusa healthy |
+| E. Webhooks proveedores | ⏳ Pendiente |
+| F. Google OAuth | ✅ Hecho |
+| G. GitHub Environments | ✅ Hecho |
+| H. Redis (Upstash) | ⏳ Opcional — sin `REDIS_URL` usa memoria local |
 
 ### A. DNS (Cloudflare o tu registrador)
 
@@ -162,17 +235,25 @@ Espera propagación DNS (5–60 min) y emisión de certificado SSL.
 ### B. Secrets y env file
 
 ```bash
-cp infra/gcp/env.sandbox.example infra/gcp/.env.sandbox
-# Editar: DB_PASSWORD, JWT_SECRET, COOKIE_SECRET, claves de pago sandbox, Brevo, etc.
+./infra/gcp/init-sandbox-env.sh          # genera .env.sandbox con secrets aleatorios
+# Tras bootstrap-sandbox, actualiza DB_PASSWORD con el valor que imprime el script
+# Editar manualmente: claves de pago que falten, Brevo, etc.
 ```
 
-Genera secrets fuertes:
+O manualmente:
 
 ```bash
-openssl rand -base64 32   # repetir para JWT, COOKIE, REVALIDATE_SECRET, etc.
+cp infra/gcp/env.sandbox.example infra/gcp/.env.sandbox
+openssl rand -base64 32   # JWT, COOKIE, REVALIDATE_SECRET, etc.
 ```
 
 ### C. Bootstrap + deploy
+
+Scripts de arranque Git (una vez):
+
+```bash
+./scripts/setup-git-branches.sh   # push main, crear develop, protecciones, environments
+```
 
 ```bash
 chmod +x infra/gcp/*.sh
@@ -188,7 +269,7 @@ chmod +x infra/gcp/*.sh
 3. **Settings → Publishable API Keys** → crea key → cópiala en `.env.sandbox` como `MEDUSA_PUBLISHABLE_KEY`  
 4. Re-deploy storefront: `./infra/gcp/deploy-sandbox.sh storefront`  
 5. Admin → **Pasarelas** → elige pasarela activa (ePayco/Wompi/MP)  
-6. Ejecuta sync: `./infra/gcp/sync-sandbox.sh`
+6. El sync de contenido corre automáticamente en CI tras cada deploy a `develop`; para forzarlo a mano: `./infra/gcp/sync-sandbox.sh`
 
 ### E. Webhooks en proveedores de pago
 
@@ -266,6 +347,7 @@ infra/gcp/
   env.production.example # plantilla prod → .env.production
   bootstrap.sh           # SQL prod
   bootstrap-sandbox.sh   # SQL sandbox
+  init-sandbox-env.sh      # genera .env.sandbox
   deploy-prod.sh         # deploy (ENV_FILE configurable)
   deploy-sandbox.sh        # wrapper → .env.sandbox
   remap-domains.sh       # prod domains
