@@ -3,7 +3,7 @@ import type { Article, FeaturedGameDetail, Streamer } from "@lib/data/cms"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import FeaturedGamesHero from "@modules/gorumin/components/featured-games-hero"
 import ProductCard from "@modules/gorumin/components/product-card"
-import ArticleCard from "@modules/gorumin/components/article-card"
+import HomeArticlesCarousel from "@modules/gorumin/components/home-articles-carousel"
 import StreamerRail from "@modules/gorumin/components/streamer-rail"
 
 function SectionHeading({
@@ -84,11 +84,7 @@ export default function HomeTemplate({
               subtitle="LO ÚLTIMO DEL MUNDO GAMER"
               href="/noticias"
             />
-            <div className="grid grid-cols-1 gap-gutter md:grid-cols-2 lg:grid-cols-3">
-              {articles.slice(0, 6).map((article) => (
-                <ArticleCard key={article.id} article={article} />
-              ))}
-            </div>
+            <HomeArticlesCarousel articles={articles} />
           </section>
         )}
 

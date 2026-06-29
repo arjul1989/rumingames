@@ -2,7 +2,9 @@
 
 import { Payment, initMercadoPago } from "@mercadopago/sdk-react"
 import { payWithMercadoPago } from "@lib/data/cart"
+import { mapMpBrickError } from "@lib/mp-brick-errors"
 import { buildMpBrickPayer } from "@lib/mp-brick-payer"
+import { resolveCartChargeAmount } from "@lib/util/resolve-cart-charge-amount"
 import {
   buildMpBrickPaymentMethods,
   mpMethodsEnabled,
@@ -12,6 +14,7 @@ import { HttpTypes } from "@medusajs/types"
 import { isRedirectError } from "next/dist/client/components/redirect-error"
 import { useEffect, useMemo, useState } from "react"
 import ErrorMessage from "../error-message"
+import MercadoPagoTestHint from "../mercadopago-test-hint"
 
 type MercadoPagoPaymentProps = {
   cart: HttpTypes.StoreCart
@@ -46,12 +49,7 @@ const MercadoPagoPayment: React.FC<MercadoPagoPaymentProps> = ({
   )
   const sessionData = (session?.data ?? {}) as Record<string, unknown>
   const publicKey = sessionData.mp_public_key as string | undefined
-  const amount = useMemo(() => {
-    const fromSession = Number(sessionData.amount)
-    if (Number.isFinite(fromSession) && fromSession > 0) return fromSession
-    const cartTotal = Number(cart.total ?? 0)
-    return cartTotal > 0 ? cartTotal : 0
-  }, [sessionData.amount, cart.total])
+  const amount = useMemo(() => resolveCartChargeAmount(cart), [cart])
 
   const paymentMethods = useMemo(
     () => buildMpBrickPaymentMethods(mpSettings),
@@ -142,7 +140,7 @@ const MercadoPagoPayment: React.FC<MercadoPagoPaymentProps> = ({
     } catch (e) {
       if (isRedirectError(e)) throw e
       const message =
-        e instanceof Error ? e.message : "No se pudo procesar el pago."
+        e instanceof Error ? mapMpBrickError(e.message) : mapMpBrickError(String(e))
       setError(message)
       throw e
     } finally {
@@ -152,6 +150,7 @@ const MercadoPagoPayment: React.FC<MercadoPagoPaymentProps> = ({
 
   return (
     <div data-testid={dataTestId} className="min-h-[420px]">
+      <MercadoPagoTestHint />
       {!ready && (
         <p className="font-mono text-label-caps tracking-widest text-on-surface-variant/50 mb-4">
           CARGANDO PAGO SEGURO…
@@ -170,9 +169,7 @@ const MercadoPagoPayment: React.FC<MercadoPagoPaymentProps> = ({
           }}
           onReady={() => setReady(true)}
           onSubmit={onSubmit}
-          onError={(e) =>
-            setError(e?.message || "Revisa los datos de pago e intenta de nuevo.")
-          }
+          onError={(e) => setError(mapMpBrickError(e as Parameters<typeof mapMpBrickError>[0]))}
         />
       </div>
       <ErrorMessage error={error} data-testid="mercadopago-payment-error" />

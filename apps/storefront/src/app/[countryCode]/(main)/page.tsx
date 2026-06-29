@@ -35,7 +35,7 @@ export default async function Home(props: {
         countryCode,
         queryParams: { limit: 8 },
       }).catch(() => ({ response: { products: [], count: 0 } })),
-      listArticles({ limit: 6 }),
+      listArticles({ limit: 3 }),
       listHomeFeaturedGames(),
       listStreamers({ featured: true, limit: 12 }),
     ])

@@ -8,8 +8,18 @@ export const metadata: Metadata = {
 }
 
 const CONTACTS = [
-  { icon: "support_agent", label: "Soporte", value: "soporte@gorumin.com", href: "mailto:soporte@gorumin.com" },
-  { icon: "privacy_tip", label: "Privacidad / Habeas data", value: "privacidad@gorumin.com", href: "mailto:privacidad@gorumin.com" },
+  {
+    icon: "mail",
+    label: "PQRS / Contacto",
+    value: "info@gorumin.com",
+    href: "mailto:info@gorumin.com",
+  },
+  {
+    icon: "chat",
+    label: "WhatsApp",
+    value: "+57 300 176 0011",
+    href: "https://wa.me/573001760011",
+  },
 ]
 
 export default function ContactoPage() {
@@ -21,8 +31,8 @@ export default function ContactoPage() {
           Contacto
         </h1>
         <p className="max-w-xl text-on-surface-variant/80">
-          ¿Tienes dudas sobre un pedido o un código? Escríbenos y te ayudamos. Atención para
-          Colombia 🇨🇴.
+          ¿Tienes dudas sobre un pedido o un código? Escríbenos por correo o WhatsApp. Atención
+          para Colombia 🇨🇴.
         </p>
       </header>
 
@@ -31,6 +41,8 @@ export default function ContactoPage() {
           <a
             key={c.href}
             href={c.href}
+            target={c.href.startsWith("https://wa.me") ? "_blank" : undefined}
+            rel={c.href.startsWith("https://wa.me") ? "noopener noreferrer" : undefined}
             className="hyper-glass flex items-center gap-4 rounded-xl p-5 transition-colors hover:border-primary/50"
           >
             <span className="material-symbols-outlined text-secondary">{c.icon}</span>

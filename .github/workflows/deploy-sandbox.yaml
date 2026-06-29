@@ -97,4 +97,64 @@ jobs:
             --platform managed \
             --port 8000 \
             --min-instances 0 \
+            --update-env-vars REVALIDATE_SECRET=${{ secrets.REVALIDATE_SECRET }} \
             --allow-unauthenticated
+
+  sync-content:
+    needs: deploy
+    if: github.event_name == 'push' || github.event.inputs.service == 'both' || github.event.inputs.service == 'medusa'
+    runs-on: ubuntu-latest
+    environment: sandbox
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDP }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: corepack enable && pnpm install --frozen-lockfile
+
+      - name: Sync CMS + images to sandbox DB
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ secrets.GCP_REGION }}
+          SQL_INSTANCE: ${{ secrets.SQL_INSTANCE }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          STOREFRONT_BASE_URL: ${{ secrets.STOREFRONT_BASE_URL }}
+          MEDUSA_BACKEND_URL: ${{ secrets.MEDUSA_BACKEND_URL }}
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+          FAZER_API_KEY: ${{ secrets.FAZER_API_KEY }}
+        run: |
+          curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.3/cloud-sql-proxy.linux.amd64
+          chmod +x cloud-sql-proxy
+          CONN="${GCP_PROJECT_ID}:${GCP_REGION}:${SQL_INSTANCE}"
+          ./cloud-sql-proxy "$CONN" --port 5433 &
+          PROXY_PID=$!
+          trap "kill $PROXY_PID 2>/dev/null || true" EXIT
+          for _ in $(seq 1 30); do
+            (echo >/dev/tcp/127.0.0.1/5433) &>/dev/null && break
+            sleep 0.5
+          done
+          export NODE_ENV=production
+          export DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@127.0.0.1:5433/${DB_NAME}"
+          export STOREFRONT_URL="${STOREFRONT_BASE_URL}"
+          export SYNC_MODE=fast
+          cd apps/medusa
+          npx medusa exec ./src/scripts/sync-storefront-content.ts

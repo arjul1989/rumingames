@@ -148,7 +148,7 @@ export function buildMpCreatePaymentPayload(
 ): MpCreatePaymentInput {
   const paymentMethodId = data.payment_method_id as string | undefined
   const token = data.token as string | undefined
-  const amount = data.transaction_amount ?? data.amount
+  const amount = data.amount ?? data.transaction_amount
 
   if (amount == null) {
     throw new Error("Mercado Pago authorization requires an amount.")

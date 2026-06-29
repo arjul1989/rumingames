@@ -1,5 +1,6 @@
 "use client"
 import { Radio, RadioGroup } from "@headlessui/react"
+import { isCheckoutStepOpen } from "@lib/checkout-steps"
 import { checkoutLabels } from "@lib/i18n/es-co"
 import { setShippingMethod } from "@lib/data/cart"
 import { calculatePriceForShippingOption } from "@lib/data/fulfillment"
@@ -68,7 +69,8 @@ const Shipping: React.FC<ShippingProps> = ({
   const router = useRouter()
   const pathname = usePathname()
 
-  const isOpen = searchParams.get("step") === "delivery"
+  const currentStep = searchParams.get("step")
+  const isOpen = isCheckoutStepOpen("delivery", currentStep)
 
   const _shippingMethods = availableShippingMethods?.filter(
     (sm) => (sm as unknown as { service_zone?: { fulfillment_set?: { type?: string; location?: { address: HttpTypes.StoreCartAddress } } } }).service_zone?.fulfillment_set?.type !== "pickup"

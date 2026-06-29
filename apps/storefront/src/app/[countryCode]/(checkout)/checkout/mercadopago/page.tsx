@@ -1,6 +1,6 @@
 import { checkoutLabels } from "@lib/i18n/es-co"
 import { retrieveCart } from "@lib/data/cart"
-import { retrieveCartPricingBreakdown } from "@lib/data/pricing"
+import { retrieveCartPricingBreakdown, applyCartPricing } from "@lib/data/pricing"
 import { retrieveCustomer } from "@lib/data/customer"
 import { getMpCustomerId } from "@lib/data/payment-methods"
 import PaymentWrapper from "@modules/checkout/components/payment-wrapper"
@@ -19,6 +19,11 @@ type Props = {
 
 export default async function MercadoPagoCheckoutPage({ params }: Props) {
   const { countryCode } = await params
+  const cartId = (await retrieveCart(undefined, "id"))?.id
+  if (cartId) {
+    await applyCartPricing(cartId, countryCode)
+  }
+
   const cart = await retrieveCart(
     undefined,
     "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name, *shipping_address, *billing_address, *payment_collection, *payment_collection.payment_sessions, email, metadata"

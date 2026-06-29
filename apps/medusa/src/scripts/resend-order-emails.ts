@@ -2,8 +2,8 @@ import type { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { DIGITAL_DELIVERY_MODULE } from "../modules/digital-delivery"
 import type DigitalDeliveryModuleService from "../modules/digital-delivery/service"
-import { resolveLineItemQuantity } from "../lib/fulfill-digital-order"
-import { resolveMoneyAmount } from "../lib/resolve-money-amount"
+import { resolveOrderEmailItems, resolveOrderTotal } from "../lib/resolve-order-money"
+import { sendDigitalCodesEmail } from "../lib/send-digital-codes-email"
 import { sendEmail } from "../lib/email/send-email"
 import { storefrontUrl, getStorefrontBaseUrl } from "../lib/storefront-url"
 
@@ -38,9 +38,18 @@ export default async function resendOrderEmails({ container }: ExecArgs) {
       "currency_code",
       "shipping_address.first_name",
       "shipping_address.country_code",
+      "total",
+      "subtotal",
       "summary.totals.current_order_total",
       "summary.totals.raw_current_order_total",
+      "payment_collections.amount",
+      "payment_collections.captured_amount",
+      "payment_collections.payments.amount",
+      "payment_collections.payments.captured_amount",
       "items.title",
+      "items.unit_price",
+      "items.raw_unit_price",
+      "items.id",
       "items.quantity",
       "items.raw_quantity",
       "items.detail.quantity",
@@ -60,14 +69,24 @@ export default async function resendOrderEmails({ container }: ExecArgs) {
         email?: string | null
         currency_code?: string
         shipping_address?: { first_name?: string | null; country_code?: string } | null
+        total?: unknown
+        subtotal?: unknown
         summary?: {
           totals?: {
             current_order_total?: unknown
             raw_current_order_total?: unknown
           }
         }
+        payment_collections?: Array<{
+          amount?: unknown
+          captured_amount?: unknown
+          payments?: Array<{ amount?: unknown; captured_amount?: unknown }>
+        }>
         items?: Array<{
           title?: string
+          unit_price?: unknown
+          raw_unit_price?: unknown
+          id?: string
           quantity?: unknown
           raw_quantity?: { value?: string }
           detail?: {
@@ -95,10 +114,7 @@ export default async function resendOrderEmails({ container }: ExecArgs) {
   const orderUrl = storefrontUrl(`/account/orders/details/${order.id}`, cc)
   const accountUrl = storefrontUrl("/account", cc)
 
-  const total = resolveMoneyAmount(
-    order.summary?.totals?.current_order_total ??
-      order.summary?.totals?.raw_current_order_total
-  )
+  const total = resolveOrderTotal(order)
 
   await sendEmail(container, {
     to,
@@ -111,17 +127,7 @@ export default async function resendOrderEmails({ container }: ExecArgs) {
       email: to,
       total,
       currency_code: order.currency_code ?? "cop",
-      items: (order.items ?? []).map((item) => ({
-        title: item.title ?? "Producto",
-        quantity: resolveLineItemQuantity(item),
-        total: resolveMoneyAmount(
-          item.detail?.subtotal ??
-            item.detail?.raw_subtotal ??
-            item.subtotal ??
-            item.total ??
-            item.raw_total
-        ),
-      })),
+      items: resolveOrderEmailItems(order),
       order_url: orderUrl,
       account_url: accountUrl,
     },
@@ -134,30 +140,38 @@ export default async function resendOrderEmails({ container }: ExecArgs) {
     order_id: order.id,
     status: "delivered",
   })
-  const row = deliveries[0]
-  if (!row) {
+  if (!deliveries.length) {
     console.log("No delivered digital code; skipped digital-code-delivered.")
     return
   }
 
-  const code = await delivery.revealCode(row.id)
-  if (!code) {
-    throw new Error("Could not decrypt digital code.")
+  const itemsById = new Map(
+    (order.items ?? [])
+      .filter((item) => item.id)
+      .map((item) => [item.id!, item.title ?? "Producto digital"])
+  )
+
+  const codes: Array<{ product: string; code: string }> = []
+  for (const row of deliveries) {
+    const code = await delivery.revealCode(row.id)
+    if (!code) continue
+    codes.push({
+      product: itemsById.get(row.line_item_id) ?? "Producto digital",
+      code,
+    })
   }
 
-  const product = order.items?.[0]?.title ?? "Producto digital"
-  await sendEmail(container, {
+  if (!codes.length) {
+    throw new Error("Could not decrypt digital codes.")
+  }
+
+  await sendDigitalCodesEmail(container, {
     to,
-    template: "digital-code-delivered",
+    display_id: order.display_id ?? order.id,
     order_id: order.id,
-    data: {
-      product,
-      display_id: order.display_id ?? order.id,
-      code,
-      orders_url: orderUrl,
-      account_url: accountUrl,
-    },
+    codes,
+    country_code: cc,
   })
-  console.log(`Sent digital-code-delivered → ${to}`)
+  console.log(`Sent digital-code-delivered (${codes.length} codes) → ${to}`)
   console.log(`  orders_url: ${orderUrl}`)
 }

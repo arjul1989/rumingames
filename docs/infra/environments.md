@@ -108,7 +108,7 @@ Artifact Registry (`gorumin`) se **comparte** con producción; las imágenes se 
 | `cp infra/gcp/env.sandbox.example infra/gcp/.env.sandbox` | Plantilla de secrets |
 | `./infra/gcp/deploy-sandbox.sh` | Build + deploy Medusa + Storefront |
 | `./infra/gcp/remap-domains-sandbox.sh` | Mapea dominios Cloud Run |
-| `./infra/gcp/sync-sandbox.sh` | Sincroniza CMS/catálogo en DB sandbox |
+| `./infra/gcp/sync-sandbox.sh` | Sincroniza CMS/catálogo en DB sandbox (manual; también corre en CI tras deploy a `develop`) |
 
 ### Credenciales sandbox
 
@@ -207,7 +207,7 @@ chmod +x infra/gcp/*.sh
 3. **Settings → Publishable API Keys** → crea key → cópiala en `.env.sandbox` como `MEDUSA_PUBLISHABLE_KEY`  
 4. Re-deploy storefront: `./infra/gcp/deploy-sandbox.sh storefront`  
 5. Admin → **Pasarelas** → elige pasarela activa (ePayco/Wompi/MP)  
-6. Ejecuta sync: `./infra/gcp/sync-sandbox.sh`
+6. El sync de contenido corre automáticamente en CI tras cada deploy a `develop`; para forzarlo a mano: `./infra/gcp/sync-sandbox.sh`
 
 ### E. Webhooks en proveedores de pago
 

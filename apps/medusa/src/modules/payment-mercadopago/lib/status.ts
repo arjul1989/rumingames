@@ -1,6 +1,7 @@
 import { PaymentSessionStatus, PaymentActions } from "@medusajs/framework/utils"
 import type { MpPaymentStatus } from "./types"
 import { isAsyncMpPaymentMethod } from "./build-payment-payload"
+import { isMockMpEnabled } from "../../../lib/dev-mocks"
 
 // Maps a Mercado Pago payment status to a Medusa payment-session status.
 // Used by getPaymentStatus/authorizePayment to keep state in sync.
@@ -41,6 +42,10 @@ export function medusaAuthorizeStatusFromMpPayment(payment: {
     mapped === PaymentSessionStatus.PENDING &&
     isAsyncMpPaymentMethod(payment.payment_method_id)
   ) {
+    return PaymentSessionStatus.AUTHORIZED
+  }
+  // MOCK_MP: all payments start pending and finish via /dev/mock-mp (cards included).
+  if (mapped === PaymentSessionStatus.PENDING && isMockMpEnabled()) {
     return PaymentSessionStatus.AUTHORIZED
   }
   return mapped

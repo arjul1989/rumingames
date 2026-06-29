@@ -36,12 +36,38 @@ describe("mercadopago status mapping", () => {
         payment_method_id: "efecty",
       })
     ).toBe(PaymentSessionStatus.AUTHORIZED)
-    expect(
-      medusaAuthorizeStatusFromMpPayment({
-        status: "pending",
-        payment_method_id: "visa",
-      })
-    ).toBe(PaymentSessionStatus.PENDING)
+  })
+
+  it("keeps pending card payments unauthorized without MOCK_MP", () => {
+    const prev = process.env.MOCK_MP
+    delete process.env.MOCK_MP
+    try {
+      expect(
+        medusaAuthorizeStatusFromMpPayment({
+          status: "pending",
+          payment_method_id: "visa",
+        })
+      ).toBe(PaymentSessionStatus.PENDING)
+    } finally {
+      if (prev === undefined) delete process.env.MOCK_MP
+      else process.env.MOCK_MP = prev
+    }
+  })
+
+  it("treats pending mock card payments as authorized when MOCK_MP is enabled", () => {
+    const prev = process.env.MOCK_MP
+    process.env.MOCK_MP = "true"
+    try {
+      expect(
+        medusaAuthorizeStatusFromMpPayment({
+          status: "pending",
+          payment_method_id: "visa",
+        })
+      ).toBe(PaymentSessionStatus.AUTHORIZED)
+    } finally {
+      if (prev === undefined) delete process.env.MOCK_MP
+      else process.env.MOCK_MP = prev
+    }
   })
 
   it("maps rejected to error / failed", () => {

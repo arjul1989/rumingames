@@ -1,9 +1,9 @@
 import { MedusaContainer } from "@medusajs/framework"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { emitMonitorAlert } from "../monitoring"
+import { sendDigitalCodesEmail } from "../send-digital-codes-email"
 import { sendEmail } from "../email/send-email"
-import { fulfillDigitalOrder, type FazerLike, isFazerOrderInProgress, resolveLineItemQuantity } from "../fulfill-digital-order"
-import { storefrontUrl } from "../storefront-url"
+import { fulfillDigitalOrder, type FazerLike, isFazerOrderInProgress, resolveLineItemQuantity, persistDeliveredCodesForLineItem, countDeliveredUnits, sortDeliveriesById } from "../fulfill-digital-order"
 import { SUPPLIER_MODULE } from "../../modules/supplier"
 import { FAZER_MODULE } from "../../modules/fazer"
 import { DIGITAL_DELIVERY_MODULE } from "../../modules/digital-delivery"
@@ -136,6 +136,7 @@ export async function fundAndFulfillDigitalOrder(
   let delivered = 0
   let failed = 0
   let skipped = 0
+  const codesToEmail: Array<{ product: string; code: string }> = []
 
   for (const item of items) {
     const mapping = item.variant_id ? mappingByVariant.get(item.variant_id) : undefined
@@ -144,11 +145,6 @@ export async function fundAndFulfillDigitalOrder(
     const idempotencyKey = `fund:${orderId}:${item.id}`
     const existingRuns = await funding.listFundingRuns({ idempotency_key: idempotencyKey })
     let run = existingRuns[0]
-
-    if (run?.status === "completed") {
-      skipped++
-      continue
-    }
 
     const wholesaleUsd = mapping.last_synced_price_usd
     if (wholesaleUsd == null || wholesaleUsd <= 0) {
@@ -166,7 +162,10 @@ export async function fundAndFulfillDigitalOrder(
       continue
     }
 
-    if (wholesaleUsd > config.maxUsdPerOrder) {
+    const qty = resolveLineItemQuantity(item)
+    const wholesaleTotalUsd = wholesaleUsd * qty
+
+    if (wholesaleTotalUsd > config.maxUsdPerOrder) {
       failed++
       await markFundingFailed(container, {
         orderId,
@@ -174,28 +173,32 @@ export async function fundAndFulfillDigitalOrder(
         mapping,
         idempotencyKey,
         run,
-        error: `Monto mayorista $${wholesaleUsd} excede FUNDING_MAX_USD_PER_ORDER.`,
+        error: `Monto mayorista $${wholesaleTotalUsd} (${qty}×$${wholesaleUsd}) excede FUNDING_MAX_USD_PER_ORDER.`,
         funding,
         delivery,
       })
       continue
     }
 
-    const existingDelivery = await delivery.listDigitalDeliveries({
-      order_id: orderId,
-      line_item_id: item.id,
-    })
-    let deliveryRow = existingDelivery[0]
-    if (deliveryRow?.status === "delivered") {
+    const existingDeliveries = sortDeliveriesById(
+      await delivery.listDigitalDeliveries({
+        order_id: orderId,
+        line_item_id: item.id,
+      })
+    )
+
+    if (countDeliveredUnits(existingDeliveries, qty)) {
       skipped++
       continue
     }
+
+    let deliveryRow = existingDeliveries[0]
     if (!deliveryRow) {
       const created = await delivery.createDigitalDeliveries([
         { order_id: orderId, line_item_id: item.id, status: "processing" },
       ])
       deliveryRow = created[0]
-    } else {
+    } else if (deliveryRow.status !== "delivered") {
       await delivery.updateDigitalDeliveries({ id: deliveryRow.id, status: "processing" })
     }
 
@@ -206,7 +209,7 @@ export async function fundAndFulfillDigitalOrder(
           line_item_id: item.id,
           digital_delivery_id: deliveryRow.id,
           fazer_sku_id: mapping.fazer_sku_id,
-          wholesale_usd: wholesaleUsd,
+          wholesale_usd: wholesaleTotalUsd,
           idempotency_key: idempotencyKey,
           fazer_payment_method: config.paymentMethod,
           status: "pending" as FundingRunStatus,
@@ -219,7 +222,7 @@ export async function fundAndFulfillDigitalOrder(
       if (run.status === "pending" || run.status === "failed") {
         const payment = await fazer.createPayment!({
           method: config.paymentMethod,
-          amount_usd: wholesaleUsd,
+          amount_usd: wholesaleTotalUsd,
           idempotency_key: idempotencyKey,
         })
 
@@ -235,7 +238,7 @@ export async function fundAndFulfillDigitalOrder(
 
         const binanceResult = await sendFazerFundingPayment({
           fazerPaymentId: payment.id,
-          amountUsd: wholesaleUsd,
+          amountUsd: wholesaleTotalUsd,
           method: config.paymentMethod,
           payTo: payment.pay_to,
           payUrl: payment.pay_url,
@@ -283,7 +286,7 @@ export async function fundAndFulfillDigitalOrder(
         try {
           let fazerOrder = await fazer.createOrder({
             sku_id: mapping.fazer_sku_id,
-            quantity: resolveLineItemQuantity(item),
+            quantity: qty,
             idempotency_key: orderIdempotency,
             external_id: externalId,
           })
@@ -308,20 +311,25 @@ export async function fundAndFulfillDigitalOrder(
             )
           }
 
-          const code = fazerOrder.codes?.[0]
-          if (!code) {
-            throw new Error(`Fazer order ${fazerOrder.id} completed without a code.`)
+          const codes = fazerOrder.codes ?? []
+          if (!codes.length) {
+            throw new Error(`Fazer order ${fazerOrder.id} completed without codes.`)
           }
 
-          await delivery.storeCode(deliveryRow.id, code, fazerOrder.id)
-          await sendCustomerCode(
-            container,
-            order.email ?? "",
-            item.title,
-            code,
-            order.display_id ?? undefined,
-            orderId
+          const { newCodes, unitsDelivered } = await persistDeliveredCodesForLineItem(
+            delivery,
+            {
+              orderId,
+              lineItemId: item.id,
+              itemTitle: item.title,
+              fazerOrderId: fazerOrder.id,
+              codes,
+              expectedQuantity: qty,
+              existingDeliveries,
+            }
           )
+
+          codesToEmail.push(...newCodes)
 
           await funding.updateFundingRuns({
             id: run.id,
@@ -330,7 +338,7 @@ export async function fundAndFulfillDigitalOrder(
             error_message: null,
           })
 
-          delivered++
+          delivered += unitsDelivered
           success = true
         } catch (e) {
           lastError = (e as Error).message
@@ -368,6 +376,15 @@ export async function fundAndFulfillDigitalOrder(
         orderId
       )
     }
+  }
+
+  if (codesToEmail.length > 0 && order.email) {
+    await sendDigitalCodesEmail(container, {
+      to: order.email,
+      display_id: order.display_id ?? orderId,
+      order_id: orderId,
+      codes: codesToEmail,
+    })
   }
 
   logger.info(
@@ -423,33 +440,6 @@ async function markFundingFailed(
   }
 
   await alertFundingFailed(container, undefined, ctx.item.title, ctx.error, ctx.orderId)
-}
-
-async function sendCustomerCode(
-  container: MedusaContainer,
-  to: string,
-  productTitle: string,
-  code: string,
-  displayId?: number | string,
-  orderId?: string
-) {
-  if (!to) return
-  const cc = "co"
-  const ordersUrl = orderId
-    ? storefrontUrl(`/account/orders/details/${orderId}`, cc)
-    : storefrontUrl("/account/orders", cc)
-
-  await sendEmail(container, {
-    to,
-    template: "digital-code-delivered",
-    data: {
-      product: productTitle,
-      display_id: displayId ?? "",
-      code,
-      orders_url: ordersUrl,
-      account_url: storefrontUrl("/account", cc),
-    },
-  })
 }
 
 async function alertFundingFailed(

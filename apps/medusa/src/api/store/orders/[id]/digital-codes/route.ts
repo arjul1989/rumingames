@@ -41,6 +41,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
   const codes = await Promise.all(
     deliveries.map(async (d) => ({
+      id: d.id,
       line_item_id: d.line_item_id,
       status: d.status,
       code: d.status === "delivered" ? await delivery.revealCode(d.id) : null,

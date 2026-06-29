@@ -27,6 +27,7 @@ export function buildMpBrickPaymentMethods(
   if (settings.enable_cards) {
     methods.creditCard = "all"
     methods.debitCard = "all"
+    methods.prepaidCard = "all"
   }
   if (settings.enable_pse) {
     methods.bankTransfer = "all"

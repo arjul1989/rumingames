@@ -16,6 +16,10 @@ import {
 import { getRegion } from "./regions"
 import { getLocale } from "./locale-actions"
 import { getClientIpAddress } from "@lib/client-ip"
+import { applyCartPricing } from "@lib/data/pricing"
+import { mapCheckoutFailureReason } from "@lib/mp-brick-errors"
+import { resolveCartChargeAmount } from "@lib/util/resolve-cart-charge-amount"
+import { digitsOnly } from "@lib/util/co-locale-input"
 import { transferCart } from "./customer"
 
 /**
@@ -244,6 +248,12 @@ export async function setShippingMethod({
     .then(async () => {
       const cartCacheTag = await getCacheTag("carts")
       revalidateTag(cartCacheTag)
+      const cart = await retrieveCart(cartId, "region.countries.iso_2")
+      const country =
+        cart?.shipping_address?.country_code ??
+        cart?.region?.countries?.[0]?.iso_2 ??
+        "co"
+      await applyCartPricing(cartId, country)
     })
     .catch(medusaError)
 }
@@ -252,18 +262,59 @@ export async function initiatePaymentSession(
   cart: HttpTypes.StoreCart,
   data: HttpTypes.StoreInitializePaymentSession
 ) {
+  const country =
+    cart.shipping_address?.country_code?.toLowerCase() ??
+    cart.region?.countries?.[0]?.iso_2?.toLowerCase() ??
+    "co"
+
+  if (cart.id) {
+    await applyCartPricing(cart.id, country)
+  }
+
+  const refreshed = cart.id
+    ? await retrieveCart(
+        cart.id,
+        "id, total, metadata, region.countries.iso_2, shipping_address.country_code, payment_collection, email, shipping_address, billing_address, shipping_methods"
+      )
+    : null
+
+  const pricedCart = refreshed
+    ? { ...cart, ...refreshed, items: cart.items ?? refreshed.items }
+    : cart
+
+  const chargeAmount = resolveCartChargeAmount(pricedCart)
+  const sessionData = {
+    ...data,
+    data: {
+      ...(data.data as Record<string, unknown> | undefined),
+      amount: chargeAmount,
+    },
+  }
+
   const headers = {
     ...(await getAuthHeaders()),
   }
 
   return sdk.store.payment
-    .initiatePaymentSession(cart, data, {}, headers)
+    .initiatePaymentSession(pricedCart, sessionData, {}, headers)
     .then(async (resp) => {
       const cartCacheTag = await getCacheTag("carts")
       revalidateTag(cartCacheTag)
       return resp
     })
     .catch(medusaError)
+}
+
+async function ensureCartPaymentCollection(cartId: string) {
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+  await sdk.client.fetch("/store/payment-collections", {
+    method: "POST",
+    body: { cart_id: cartId },
+    headers,
+    cache: "no-store",
+  })
 }
 
 export async function applyPromotions(codes: string[]) {
@@ -358,9 +409,9 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
     const idType =
       (formData.get("payer_identification_type") as string | null)?.trim() ||
       "CC"
-    const idNumber = (
-      formData.get("payer_identification_number") as string | null
-    )?.trim()
+    const idNumber = digitsOnly(
+      (formData.get("payer_identification_number") as string | null) ?? ""
+    )
 
     if (!idNumber) {
       throw new Error(
@@ -385,7 +436,9 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
       city: formData.get("shipping_address.city"),
       country_code: formData.get("shipping_address.country_code"),
       province: formData.get("shipping_address.province"),
-      phone: formData.get("shipping_address.phone"),
+      phone: digitsOnly(
+        String(formData.get("shipping_address.phone") ?? "")
+      ),
     }
 
     const data: Record<string, unknown> = {
@@ -399,9 +452,14 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
     return e instanceof Error ? e.message : "No se pudieron guardar los datos."
   }
 
-  redirect(
-    `/${formData.get("shipping_address.country_code")}/checkout?step=delivery`
+  const countryCode = String(
+    formData.get("shipping_address.country_code") ?? "co"
   )
+  const returnPath =
+    (formData.get("checkout_return_path") as string | null)?.trim() ||
+    `/${countryCode}/checkout`
+
+  redirect(`${returnPath}?step=delivery`)
 }
 
 /**
@@ -472,24 +530,48 @@ export async function payWithMercadoPago(
     return { error: "No encontramos tu carrito." }
   }
 
+  await applyCartPricing(cart.id, countryCode)
+
+  const pricedCart = await retrieveCart(
+    cart.id,
+    "*payment_collection, *payment_collection.payment_sessions, *region, *shipping_address, email, metadata, total"
+  )
+
+  if (!pricedCart) {
+    return { error: "No encontramos tu carrito." }
+  }
+
+  if (!pricedCart.payment_collection?.id) {
+    await ensureCartPaymentCollection(pricedCart.id)
+    const withCollection = await retrieveCart(
+      pricedCart.id,
+      "*payment_collection, *payment_collection.payment_sessions, *region, *shipping_address, email, metadata, total"
+    )
+    if (withCollection) {
+      Object.assign(pricedCart, withCollection)
+    }
+  }
+
   // Inject the Brick token (+ payment method / payer data) into the session.
-  const pendingSession = cart.payment_collection?.payment_sessions?.find(
+  const pendingSession = pricedCart.payment_collection?.payment_sessions?.find(
     (s) => s.status === "pending"
   )
 
   const ip_address = await getClientIpAddress()
+  const chargeAmount = resolveCartChargeAmount(pricedCart)
 
-  await initiatePaymentSession(cart, {
+  await initiatePaymentSession(pricedCart, {
     provider_id: MP_PROVIDER_ID,
     data: {
       ...(pendingSession?.data as Record<string, unknown> | undefined),
       ...paymentData,
       session_id: pendingSession?.id,
-      amount: cart.total,
+      amount: chargeAmount,
+      transaction_amount: chargeAmount,
       ip_address,
-      payer_email: cart.email,
-      shipping_address: cart.shipping_address,
-      cart_metadata: cart.metadata,
+      payer_email: pricedCart.email,
+      shipping_address: pricedCart.shipping_address,
+      cart_metadata: pricedCart.metadata,
     },
   } as HttpTypes.StoreInitializePaymentSession)
 
@@ -500,27 +582,44 @@ export async function payWithMercadoPago(
   let order: HttpTypes.StoreOrder | undefined
   let failureReason = ""
 
+  const readMpFailureFromCart = async () => {
+    const refreshed = await retrieveCart(
+      pricedCart.id,
+      "*payment_collection, *payment_collection.payment_sessions"
+    )
+    const session = refreshed?.payment_collection?.payment_sessions?.find(
+      (s) =>
+        s.id === pendingSession?.id ||
+        s.status === "error" ||
+        s.status === "pending"
+    )
+    const mpError = (session?.data as Record<string, unknown> | undefined)
+      ?.mp_error
+    if (typeof mpError === "string" && mpError.trim()) {
+      return mpError
+    }
+    if (session?.status === "error") {
+      return "El pago fue rechazado."
+    }
+    return ""
+  }
+
   try {
-    const res = await sdk.store.cart.complete(cart.id, {}, headers)
+    const res = await sdk.store.cart.complete(pricedCart.id, {}, headers)
     if (res?.type === "order") {
       order = res.order
+    } else if (!order) {
+      try {
+        failureReason = await readMpFailureFromCart()
+      } catch {
+        // Keep the generic failure reason.
+      }
     }
   } catch (e) {
     failureReason = e instanceof Error ? e.message : "El pago fue rechazado."
     try {
-      const refreshed = await retrieveCart(
-        cart.id,
-        "*payment_collection, *payment_collection.payment_sessions"
-      )
-      const session = refreshed?.payment_collection?.payment_sessions?.find(
-        (s) =>
-          s.id === pendingSession?.id ||
-          s.status === "error" ||
-          s.status === "pending"
-      )
-      const mpError = (session?.data as Record<string, unknown> | undefined)
-        ?.mp_error
-      if (typeof mpError === "string" && mpError.trim()) {
+      const mpError = await readMpFailureFromCart()
+      if (mpError) {
         failureReason = mpError
       }
     } catch {
@@ -572,7 +671,7 @@ export async function payWithMercadoPago(
 
   redirect(
     `/${countryCode}/checkout/failure?reason=${encodeURIComponent(
-      failureReason || "No se pudo procesar el pago."
+      mapCheckoutFailureReason(failureReason || "No se pudo procesar el pago.")
     )}`
   )
 }
@@ -602,22 +701,34 @@ export async function payWithWompi(
     return { error: "No encontramos tu carrito." }
   }
 
-  const pendingSession = cart.payment_collection?.payment_sessions?.find(
+  await applyCartPricing(cart.id, countryCode)
+
+  const pricedCart = await retrieveCart(
+    cart.id,
+    "*payment_collection, *payment_collection.payment_sessions, *region, *shipping_address, email, metadata, total"
+  )
+
+  if (!pricedCart) {
+    return { error: "No encontramos tu carrito." }
+  }
+
+  const pendingSession = pricedCart.payment_collection?.payment_sessions?.find(
     (s) => s.status === "pending" && s.provider_id === WOMPI_PROVIDER_ID
   )
 
   const ip_address = await getClientIpAddress()
+  const chargeAmount = resolveCartChargeAmount(pricedCart)
 
-  await initiatePaymentSession(cart, {
+  await initiatePaymentSession(pricedCart, {
     provider_id: WOMPI_PROVIDER_ID,
     data: {
       ...(pendingSession?.data as Record<string, unknown> | undefined),
       ...paymentData,
       wompi_transaction_id: paymentData.transaction_id,
       session_id: paymentData.session_id ?? pendingSession?.id,
-      amount: cart.total,
+      amount: chargeAmount,
       ip_address,
-      payer_email: cart.email,
+      payer_email: pricedCart.email,
     },
   } as HttpTypes.StoreInitializePaymentSession)
 
@@ -629,7 +740,7 @@ export async function payWithWompi(
   let failureReason = ""
 
   try {
-    const res = await sdk.store.cart.complete(cart.id, {}, headers)
+    const res = await sdk.store.cart.complete(pricedCart.id, {}, headers)
     if (res?.type === "order") {
       order = res.order
     }
@@ -637,7 +748,7 @@ export async function payWithWompi(
     failureReason = e instanceof Error ? e.message : "El pago fue rechazado."
     try {
       const refreshed = await retrieveCart(
-        cart.id,
+        pricedCart.id,
         "*payment_collection, *payment_collection.payment_sessions"
       )
       const session = refreshed?.payment_collection?.payment_sessions?.find(
@@ -714,22 +825,34 @@ export async function payWithEpayco(
     return { error: "No encontramos tu carrito." }
   }
 
-  const pendingSession = cart.payment_collection?.payment_sessions?.find(
+  await applyCartPricing(cart.id, countryCode)
+
+  const pricedCart = await retrieveCart(
+    cart.id,
+    "*payment_collection, *payment_collection.payment_sessions, *region, *shipping_address, email, metadata, total"
+  )
+
+  if (!pricedCart) {
+    return { error: "No encontramos tu carrito." }
+  }
+
+  const pendingSession = pricedCart.payment_collection?.payment_sessions?.find(
     (s) => s.status === "pending" && s.provider_id === EPAYCO_PROVIDER_ID
   )
 
   const ip_address = await getClientIpAddress()
+  const chargeAmount = resolveCartChargeAmount(pricedCart)
 
-  await initiatePaymentSession(cart, {
+  await initiatePaymentSession(pricedCart, {
     provider_id: EPAYCO_PROVIDER_ID,
     data: {
       ...(pendingSession?.data as Record<string, unknown> | undefined),
       ...paymentData,
       epayco_ref_payco: paymentData.ref_payco,
       session_id: paymentData.session_id ?? pendingSession?.id,
-      amount: cart.total,
+      amount: chargeAmount,
       ip_address,
-      payer_email: cart.email,
+      payer_email: pricedCart.email,
     },
   } as HttpTypes.StoreInitializePaymentSession)
 
@@ -741,7 +864,7 @@ export async function payWithEpayco(
   let failureReason = ""
 
   try {
-    const res = await sdk.store.cart.complete(cart.id, {}, headers)
+    const res = await sdk.store.cart.complete(pricedCart.id, {}, headers)
     if (res?.type === "order") {
       order = res.order
     }
@@ -749,7 +872,7 @@ export async function payWithEpayco(
     failureReason = e instanceof Error ? e.message : "El pago fue rechazado."
     try {
       const refreshed = await retrieveCart(
-        cart.id,
+        pricedCart.id,
         "*payment_collection, *payment_collection.payment_sessions"
       )
       const session = refreshed?.payment_collection?.payment_sessions?.find(

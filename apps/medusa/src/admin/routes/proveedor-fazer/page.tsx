@@ -25,14 +25,25 @@ type FazerOffer = {
   name: string
   face_value_label: string
   wholesale_price_usd: number
+  retail_price_usd: number | null
   sale_price_usd: number | null
   sale_price_cop: number | null
   margin_pct: number
+  commission_fixed_local: number | null
   stock: number | null
   enabled: boolean
   status: string
   image_url: string | null
   medusa_variant_id: string | null
+}
+
+type CountryTaxRule = { name: string; rate_pct: number }
+
+type CountryPricing = {
+  country_code: string
+  fx_rate: number
+  local_currency_code: string
+  taxes: CountryTaxRule[]
 }
 
 type CatalogGroup = {
@@ -129,21 +140,26 @@ const FazerPage = () => {
   const [mappings, setMappings] = useState<Mapping[]>([])
   const [syncing, setSyncing] = useState(false)
   const [marginDrafts, setMarginDrafts] = useState<Record<string, number>>({})
+  const [retailDrafts, setRetailDrafts] = useState<Record<string, number>>({})
+  const [countryPricing, setCountryPricing] = useState<CountryPricing | null>(null)
+  const [taxDraft, setTaxDraft] = useState<CountryTaxRule>({ name: "IVA", rate_pct: 0 })
   const [platformFilter, setPlatformFilter] = useState("all")
 
   const load = async () => {
-    const [b, s, cfg, cat, m] = await Promise.all([
+    const [b, s, cfg, cat, m, pricing] = await Promise.all([
       fetch("/admin/fazer/balance", { credentials: "include" }).then((r) => r.json()),
       fetch("/admin/fazer/sync-catalog", { credentials: "include" }).then((r) => r.json()),
       fetch("/admin/fazer/settings", { credentials: "include" }).then((r) => r.json()),
       fetch("/admin/fazer/catalog", { credentials: "include" }).then((r) => r.json()),
       fetch("/admin/supplier/mappings?limit=200", { credentials: "include" }).then((r) => r.json()),
+      fetch("/admin/pricing/country?country=co", { credentials: "include" }).then((r) => r.json()),
     ])
     setBalance(b)
     setLastSync(s.last_sync ?? null)
     setSettings(cfg)
     setGroups(cat.groups ?? [])
     setMappings(m.mappings ?? [])
+    setCountryPricing(pricing.config ?? null)
   }
 
   useEffect(() => {
@@ -203,7 +219,12 @@ const FazerPage = () => {
 
   const updateOffer = async (
     id: string,
-    payload: { margin_pct?: number; enabled?: boolean }
+    payload: {
+      margin_pct?: number
+      retail_price_usd?: number | null
+      commission_fixed_local?: number | null
+      enabled?: boolean
+    }
   ) => {
     try {
       const r = await fetch(`/admin/fazer/offers/${id}`, {
@@ -238,7 +259,45 @@ const FazerPage = () => {
     }
   }
 
-  const rate = settings?.usd_cop_rate ?? 4000
+  const saveCountryPricing = async () => {
+    if (!countryPricing) return
+    try {
+      const r = await fetch("/admin/pricing/country", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          country_code: "co",
+          fx_rate: countryPricing.fx_rate,
+          taxes: countryPricing.taxes,
+        }),
+      })
+      if (!r.ok) throw new Error((await r.json()).message ?? "Error")
+      toast.success("Impuestos y tasa guardados.")
+      await load()
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
+  const addTax = () => {
+    if (!countryPricing || !taxDraft.name.trim() || taxDraft.rate_pct <= 0) return
+    setCountryPricing({
+      ...countryPricing,
+      taxes: [...countryPricing.taxes, taxDraft],
+    })
+    setTaxDraft({ name: "IVA", rate_pct: 0 })
+  }
+
+  const removeTax = (index: number) => {
+    if (!countryPricing) return
+    setCountryPricing({
+      ...countryPricing,
+      taxes: countryPricing.taxes.filter((_, i) => i !== index),
+    })
+  }
+
+  const rate = countryPricing?.fx_rate ?? settings?.usd_cop_rate ?? 4000
 
   return (
     <RoleGate permission="fazer">
@@ -332,6 +391,65 @@ const FazerPage = () => {
         </div>
 
         <div className="px-6 pb-4">
+          <div className="rounded-lg border p-4">
+            <Heading level="h2" className="mb-3 text-base">
+              Pricing Colombia (USD → COP)
+            </Heading>
+            <div className="mb-4 flex flex-wrap items-end gap-3">
+              <div>
+                <Text size="xsmall" className="text-ui-fg-subtle">
+                  Impuesto
+                </Text>
+                <Input
+                  className="w-28"
+                  value={taxDraft.name}
+                  onChange={(e) => setTaxDraft((d) => ({ ...d, name: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Text size="xsmall" className="text-ui-fg-subtle">
+                  %
+                </Text>
+                <Input
+                  type="number"
+                  className="w-24"
+                  value={taxDraft.rate_pct}
+                  onChange={(e) =>
+                    setTaxDraft((d) => ({ ...d, rate_pct: Number(e.target.value) }))
+                  }
+                />
+              </div>
+              <Button size="small" variant="secondary" onClick={addTax}>
+                Agregar impuesto
+              </Button>
+              <Button size="small" onClick={saveCountryPricing}>
+                Guardar país
+              </Button>
+            </div>
+            {countryPricing?.taxes.length ? (
+              <div className="flex flex-wrap gap-2">
+                {countryPricing.taxes.map((tax, index) => (
+                  <Badge key={`${tax.name}-${index}`} size="small">
+                    {tax.name} {tax.rate_pct}%
+                    <button
+                      type="button"
+                      className="ml-2"
+                      onClick={() => removeTax(index)}
+                    >
+                      ×
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <Text size="small" className="text-ui-fg-subtle">
+                Sin impuestos configurados (no se muestran en checkout).
+              </Text>
+            )}
+          </div>
+        </div>
+
+        <div className="px-6 pb-4">
           <WalletTopupPanel
             onBalanceRefresh={() => {
               fetch("/admin/fazer/balance", { credentials: "include" })
@@ -413,6 +531,7 @@ const FazerPage = () => {
                               <Table.Row>
                                 <Table.HeaderCell>Valor</Table.HeaderCell>
                                 <Table.HeaderCell>Costo USD</Table.HeaderCell>
+                                <Table.HeaderCell>Precio USD</Table.HeaderCell>
                                 <Table.HeaderCell>Venta USD</Table.HeaderCell>
                                 <Table.HeaderCell>Venta COP</Table.HeaderCell>
                                 <Table.HeaderCell>Stock</Table.HeaderCell>
@@ -435,6 +554,37 @@ const FazerPage = () => {
                                     </div>
                                   </Table.Cell>
                                   <Table.Cell>{fmtUsd(o.wholesale_price_usd)}</Table.Cell>
+                                  <Table.Cell>
+                                    <div className="flex items-center gap-1">
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        className="w-24"
+                                        value={retailDrafts[o.id] ?? o.retail_price_usd ?? ""}
+                                        placeholder={o.sale_price_usd?.toFixed(2) ?? ""}
+                                        onChange={(e) =>
+                                          setRetailDrafts((d) => ({
+                                            ...d,
+                                            [o.id]: Number(e.target.value),
+                                          }))
+                                        }
+                                      />
+                                      {retailDrafts[o.id] != null &&
+                                        retailDrafts[o.id] !== (o.retail_price_usd ?? 0) && (
+                                          <Button
+                                            size="small"
+                                            variant="secondary"
+                                            onClick={() =>
+                                              updateOffer(o.id, {
+                                                retail_price_usd: retailDrafts[o.id],
+                                              })
+                                            }
+                                          >
+                                            OK
+                                          </Button>
+                                        )}
+                                    </div>
+                                  </Table.Cell>
                                   <Table.Cell>{fmtUsd(o.sale_price_usd)}</Table.Cell>
                                   <Table.Cell>{fmtCop(o.sale_price_cop)}</Table.Cell>
                                   <Table.Cell>{o.stock ?? "∞"}</Table.Cell>

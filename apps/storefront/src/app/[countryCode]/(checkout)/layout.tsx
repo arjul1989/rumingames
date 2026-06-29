@@ -43,7 +43,7 @@ export default function CheckoutLayout({
           </div>
         </nav>
       </div>
-      <div className="relative" data-testid="checkout-container">
+      <div className="relative checkout-theme" data-testid="checkout-container">
         {children}
       </div>
     </div>
