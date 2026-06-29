@@ -143,16 +143,15 @@ Registra en cada dashboard con las claves **live** de producción:
 | Mercado Pago | `https://api.gorumin.com/hooks/mercadopago` | `MP_WEBHOOK_SECRET` |
 | Wompi | `https://api.gorumin.com/hooks/wompi` | `WOMPI_EVENTS_SECRET` |
 | ePayco | `https://api.gorumin.com/hooks/epayco` | `EPAYCO_CONFIRMATION_SECRET` |
-| Fazer Cards | `https://api.gorumin.com/hooks/fazer` | `FAZER_WEBHOOK_SECRET` |
+| Fazer Cards | `https://api.gorumin.com/hooks/fazer` | `FAZER_WEBHOOK_SIGNATURE_SECRET` (`whsec_…`) |
 
 **Fazer Cards (panel reseller → Settings → Webhooks)**
 
-1. URL: `https://api.gorumin.com/hooks/fazer`
-2. Genera un secreto fuerte: `openssl rand -hex 32`
-3. Pega el mismo valor en el panel de Fazer y en `FAZER_WEBHOOK_SECRET` (`.env.production` + redeploy Medusa).
-4. Header de firma: `X-FazerCards-Signature` → `FAZER_WEBHOOK_SIGNATURE_HEADER=x-fazercards-signature` (default en código).
-5. Verificación: HMAC-SHA256 del **cuerpo raw** del POST; en producción Medusa **rechaza** webhooks sin secreto o con firma inválida (401/503).
-6. Eventos soportados: `order.completed`, `order.failed`, `order.refunded` (formato oficial) y payload legacy plano.
+1. URL sandbox: `https://api.sbx.gorumin.com/hooks/fazer` · producción: `https://api.gorumin.com/hooks/fazer`
+2. Copia el **Signing secret** del panel → `FAZER_WEBHOOK_SIGNATURE_SECRET=whsec_…` en `.env.sandbox` / `.env.production`
+3. Header: `X-Webhook-Signature: sha256=<hex>` → `FAZER_WEBHOOK_SIGNATURE_HEADER=x-webhook-signature`
+4. Prueba local/sandbox: `./scripts/test-fazer-webhook-sandbox.sh`
+5. El botón **Send test** del panel solo llega a la URL guardada (si pusiste prod, no sandbox).
 
 ### IP fija de salida (whitelist en Fazer, Brevo, etc.)
 

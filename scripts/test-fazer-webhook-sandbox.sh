@@ -21,4 +21,8 @@ URL="${WEBHOOK_URL:-${MEDUSA_BACKEND_URL%/}/hooks/fazer}"
 EXTRA_ARGS=("$@")
 
 cd "$ROOT/apps/medusa"
-npx medusa exec ./src/scripts/verify-fazer-webhook.ts -- --url="$URL" "${EXTRA_ARGS[@]}"
+if ((${#EXTRA_ARGS[@]})); then
+  npx medusa exec ./src/scripts/verify-fazer-webhook.ts -- --url="$URL" "${EXTRA_ARGS[@]}"
+else
+  npx medusa exec ./src/scripts/verify-fazer-webhook.ts -- --url="$URL"
+fi
