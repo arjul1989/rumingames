@@ -3,6 +3,7 @@ import { Modules } from "@medusajs/framework/utils"
 import { DIGITAL_DELIVERY_MODULE } from "../../../modules/digital-delivery"
 import type DigitalDeliveryModuleService from "../../../modules/digital-delivery/service"
 import { parseFazerWebhookBody } from "../../../lib/fazer-webhook-payload"
+import { resolveFazerWebhookSecret } from "../../../lib/fazer-webhook-secret"
 import { webhookSecretRequired } from "../../../lib/webhook-auth"
 import { verifyFazerSignature } from "../../../modules/fazer/lib/webhook-signature"
 import { clientIp, rateLimit } from "../../../lib/rate-limit"
@@ -12,11 +13,12 @@ const RECONCILE_TTL_SECONDS = 60 * 30
 
 function fazerSignatureHeader(req: MedusaRequest): string | undefined {
   const configured = (
-    process.env.FAZER_WEBHOOK_SIGNATURE_HEADER || "x-fazercards-signature"
+    process.env.FAZER_WEBHOOK_SIGNATURE_HEADER || "x-webhook-signature"
   ).toLowerCase()
   const headers = req.headers
   return (
     (headers[configured] as string | undefined) ??
+    (headers["x-webhook-signature"] as string | undefined) ??
     (headers["x-fazercards-signature"] as string | undefined) ??
     (headers["x-fazer-signature"] as string | undefined)
   )
@@ -32,7 +34,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     return res.status(429).json({ message: "Too many requests" })
   }
 
-  const secret = process.env.FAZER_WEBHOOK_SECRET
+  const secret = resolveFazerWebhookSecret()
   const secretCheck = webhookSecretRequired(secret, "Fazer")
   if (!secretCheck.ok) {
     logger.error("Fazer webhook: secret missing in production.")
@@ -42,7 +44,6 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const valid = verifyFazerSignature({
     rawBody: req.rawBody,
     signatureHeader: fazerSignatureHeader(req),
-    secret: secret!,
   })
   if (!valid) {
     logger.warn("Fazer webhook: invalid signature, rejecting.")

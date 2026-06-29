@@ -117,6 +117,7 @@ EOF
   [[ -n "${FAZER_BASE_URL:-}" ]] && echo "FAZER_BASE_URL: \"${FAZER_BASE_URL}\"" >>"$env_file"
   [[ -n "${FAZER_BALANCE_ALERT_THRESHOLD:-}" ]] && echo "FAZER_BALANCE_ALERT_THRESHOLD: \"${FAZER_BALANCE_ALERT_THRESHOLD}\"" >>"$env_file"
   [[ -n "${FAZER_WEBHOOK_SECRET:-}" ]] && echo "FAZER_WEBHOOK_SECRET: \"${FAZER_WEBHOOK_SECRET}\"" >>"$env_file"
+  [[ -n "${FAZER_WEBHOOK_SIGNATURE_SECRET:-}" ]] && echo "FAZER_WEBHOOK_SIGNATURE_SECRET: \"${FAZER_WEBHOOK_SIGNATURE_SECRET}\"" >>"$env_file"
   [[ -n "${FAZER_WEBHOOK_SIGNATURE_HEADER:-}" ]] && echo "FAZER_WEBHOOK_SIGNATURE_HEADER: \"${FAZER_WEBHOOK_SIGNATURE_HEADER}\"" >>"$env_file"
   [[ -n "${MP_ACCESS_TOKEN:-}" ]] && echo "MP_ACCESS_TOKEN: \"${MP_ACCESS_TOKEN}\"" >>"$env_file"
   [[ -n "${MP_PUBLIC_KEY:-}" ]] && echo "MP_PUBLIC_KEY: \"${MP_PUBLIC_KEY}\"" >>"$env_file"
