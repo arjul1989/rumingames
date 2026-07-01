@@ -12,6 +12,9 @@ export interface LinePricingInput {
   wholesale_price_usd: number
   retail_price_usd?: number | null
   margin_pct?: number
+  face_value_usd?: number | null
+  face_value_amount?: number | null
+  face_value_currency?: string | null
   quantity?: number
   commission_fixed_local?: number | null
   fazer_sku_id?: string | null
@@ -40,6 +43,19 @@ export function resolveRetailPriceUsd(input: LinePricingInput): number {
   return salePriceUsd(input.wholesale_price_usd, margin)
 }
 
+/** Nominal product value in USD (gift card denomination), not sale price with margin. */
+export function resolveFaceValueUsd(input: LinePricingInput): number {
+  if (input.face_value_usd != null && input.face_value_usd > 0) {
+    return input.face_value_usd
+  }
+  const amount = input.face_value_amount
+  const currency = input.face_value_currency?.toUpperCase()
+  if (amount != null && amount > 0 && currency === "USD") {
+    return amount
+  }
+  return resolveRetailPriceUsd(input)
+}
+
 export function computeTaxLines(
   baseLocal: number,
   fxRate: number,
@@ -64,9 +80,15 @@ export function computeLinePricing(
 ): LinePricingBreakdown {
   const quantity = input.quantity ?? 1
   const retailUsd = resolveRetailPriceUsd(input)
+  const faceUsd = resolveFaceValueUsd(input)
+  const marginPct = input.margin_pct ?? 0
   const unitSubtotalLocal = roundLocal(retailUsd * country.fx_rate)
   const subtotalLocal = unitSubtotalLocal * quantity
   const subtotalUsd = roundUsd(retailUsd * quantity)
+  const faceValueLocal = roundLocal(faceUsd * country.fx_rate) * quantity
+  const faceValueUsd = roundUsd(faceUsd * quantity)
+  const marginUsd = roundUsd(Math.max(0, subtotalUsd - faceValueUsd))
+  const marginLocal = Math.max(0, subtotalLocal - faceValueLocal)
   const taxes = computeTaxLines(subtotalLocal, country.fx_rate, country.taxes)
   const taxTotalLocal = taxes.reduce((sum, tax) => sum + tax.amount_local, 0)
   const taxTotalUsd = roundUsd(taxTotalLocal / country.fx_rate)
@@ -76,6 +98,11 @@ export function computeLinePricing(
     title: input.title ?? null,
     wholesale_price_usd: input.wholesale_price_usd,
     retail_price_usd: retailUsd,
+    face_value_usd: faceValueUsd,
+    face_value_local: faceValueLocal,
+    margin_pct: marginPct,
+    margin_usd: marginUsd,
+    margin_local: marginLocal,
     quantity,
     fx_rate: country.fx_rate,
     local_currency_code: country.local_currency_code,
@@ -137,6 +164,18 @@ export function buildCartPricingBreakdown(input: {
 
   const subtotalLocal = lineBreakdowns.reduce((sum, line) => sum + line.subtotal_local, 0)
   const subtotalUsd = roundUsd(lineBreakdowns.reduce((sum, line) => sum + line.subtotal_usd, 0))
+  const faceValueUsd = roundUsd(
+    lineBreakdowns.reduce((sum, line) => sum + line.face_value_usd, 0)
+  )
+  const faceValueLocal = lineBreakdowns.reduce((sum, line) => sum + line.face_value_local, 0)
+  const marginUsd = roundUsd(lineBreakdowns.reduce((sum, line) => sum + line.margin_usd, 0))
+  const marginLocal = lineBreakdowns.reduce((sum, line) => sum + line.margin_local, 0)
+  const marginPct =
+    input.lines.length === 1
+      ? (input.lines[0]?.margin_pct ?? 0)
+      : faceValueUsd > 0
+        ? roundUsd((marginUsd / faceValueUsd) * 100)
+        : 0
   const taxes = aggregateTaxLines(lineBreakdowns)
   const taxTotalLocal = taxes.reduce((sum, tax) => sum + tax.amount_local, 0)
   const taxTotalUsd = roundUsd(taxTotalLocal / input.country.fx_rate)
@@ -160,6 +199,11 @@ export function buildCartPricingBreakdown(input: {
     fx_rate: input.country.fx_rate,
     local_currency_code: input.country.local_currency_code,
     lines: lineBreakdowns,
+    face_value_usd: faceValueUsd,
+    face_value_local: faceValueLocal,
+    margin_pct: marginPct,
+    margin_usd: marginUsd,
+    margin_local: marginLocal,
     subtotal_usd: subtotalUsd,
     subtotal_local: subtotalLocal,
     taxes,

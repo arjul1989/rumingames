@@ -65,6 +65,8 @@ export const cartLabels = {
   taxes: "Impuestos",
   pricingSubtotalUsd: "Subtotal USD",
   pricingSubtotalLocal: "Subtotal (conversión)",
+  pricingFaceValueLocal: "Valor nominal (conversión)",
+  pricingMargin: "Margen",
   pricingCommission: "Comisión pasarela",
   total: "Total",
   goToCheckout: "Ir a pagar",

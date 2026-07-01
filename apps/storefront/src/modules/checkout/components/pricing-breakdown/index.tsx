@@ -24,7 +24,9 @@ export default function CheckoutPricingBreakdown({ breakdown }: Props) {
         <p className="txt-compact-xsmall-plus uppercase tracking-widest text-ui-fg-subtle">
           Precio en USD
         </p>
-        <p className="txt-xlarge-plus text-ui-fg-base">{fmtUsd(breakdown.subtotal_usd)}</p>
+        <p className="txt-xlarge-plus text-ui-fg-base">
+          {fmtUsd(breakdown.face_value_usd)}
+        </p>
         <p className="txt-compact-small mt-1 text-ui-fg-subtle">
           Tasa {breakdown.fx_rate.toLocaleString("es-CO")} {currency.toUpperCase()} / USD
         </p>
@@ -32,9 +34,34 @@ export default function CheckoutPricingBreakdown({ breakdown }: Props) {
 
       <div className="space-y-2 txt-medium text-ui-fg-subtle">
         <div className="flex items-center justify-between">
-          <span>{cartLabels.pricingSubtotalUsd}</span>
-          <span>{fmtUsd(breakdown.subtotal_usd)}</span>
+          <span>{cartLabels.pricingFaceValueLocal}</span>
+          <span>
+            {convertToLocale({
+              amount: breakdown.face_value_local,
+              currency_code: currency,
+              locale: "es-CO",
+            })}
+          </span>
         </div>
+
+        {breakdown.margin_local > 0 && (
+          <div className="flex items-center justify-between">
+            <span>
+              {cartLabels.pricingMargin}
+              {breakdown.margin_pct > 0 && (
+                <span className="ml-1 txt-compact-small">({breakdown.margin_pct}%)</span>
+              )}
+            </span>
+            <span>
+              {convertToLocale({
+                amount: breakdown.margin_local,
+                currency_code: currency,
+                locale: "es-CO",
+              })}
+            </span>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <span>{cartLabels.pricingSubtotalLocal}</span>
           <span>

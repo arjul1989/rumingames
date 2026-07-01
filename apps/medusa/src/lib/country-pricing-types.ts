@@ -31,6 +31,11 @@ export interface LinePricingBreakdown {
   title?: string | null
   wholesale_price_usd: number
   retail_price_usd: number
+  face_value_usd: number
+  face_value_local: number
+  margin_pct: number
+  margin_usd: number
+  margin_local: number
   quantity: number
   fx_rate: number
   local_currency_code: string
@@ -49,6 +54,11 @@ export interface CartPricingBreakdown {
   fx_rate: number
   local_currency_code: string
   lines: LinePricingBreakdown[]
+  face_value_usd: number
+  face_value_local: number
+  margin_pct: number
+  margin_usd: number
+  margin_local: number
   subtotal_usd: number
   subtotal_local: number
   taxes: PricingTaxLine[]

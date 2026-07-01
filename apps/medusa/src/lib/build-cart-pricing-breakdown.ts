@@ -49,6 +49,8 @@ export async function buildCartPricingBreakdownForCart(
       retail_price_usd: number | null
       margin_pct: number
       commission_fixed_local: number | null
+      face_value_amount: number | null
+      face_value_currency: string | null
     }
   >()
 
@@ -83,6 +85,8 @@ export async function buildCartPricingBreakdownForCart(
           retail_price_usd: offer.retail_price_usd ?? null,
           margin_pct: offer.margin_pct,
           commission_fixed_local: offer.commission_fixed_local ?? null,
+          face_value_amount: offer.face_value_amount ?? null,
+          face_value_currency: offer.face_value_currency ?? null,
         })
       }
     }
@@ -121,6 +125,8 @@ export async function buildCartPricingBreakdownForCart(
           wholesale_price_usd: offer.wholesale_price_usd,
           retail_price_usd: offer.retail_price_usd,
           margin_pct: offer.margin_pct,
+          face_value_amount: offer.face_value_amount,
+          face_value_currency: offer.face_value_currency,
           commission_fixed_local: offer.commission_fixed_local,
           quantity,
           fazer_sku_id: sku,
