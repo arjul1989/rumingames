@@ -1,7 +1,6 @@
 name: Deploy to Cloud Run (Production)
 
-# Deploys to gorumin.com. Uses GitHub Environment "production".
-# Prefer ./infra/gcp/deploy-prod.sh locally until WIF secrets are configured.
+# Deploys to gorumin.com. Uses GitHub Environment "production" (WIF configured).
 on:
   workflow_dispatch:
     inputs:
@@ -39,10 +38,49 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
 
+      - name: Setup Node
+        if: ${{ github.event.inputs.service == 'both' || github.event.inputs.service == 'medusa' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        if: ${{ github.event.inputs.service == 'both' || github.event.inputs.service == 'medusa' }}
+        run: corepack enable && pnpm install --frozen-lockfile
+
+      - name: Run Medusa DB migrations
+        if: ${{ github.event.inputs.service == 'both' || github.event.inputs.service == 'medusa' }}
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ secrets.GCP_REGION }}
+          SQL_INSTANCE: ${{ secrets.SQL_INSTANCE }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          # Runs pending Medusa migrations against production before the new
+          # image is deployed, matching what infra/gcp/deploy-prod.sh already
+          # does locally via a Cloud Run Job. Uses the same cloud-sql-proxy
+          # pattern as the sandbox sync-content job.
+          curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.3/cloud-sql-proxy.linux.amd64
+          chmod +x cloud-sql-proxy
+          CONN="${GCP_PROJECT_ID}:${GCP_REGION}:${SQL_INSTANCE}"
+          ./cloud-sql-proxy "$CONN" --port 5432 &
+          PROXY_PID=$!
+          trap "kill $PROXY_PID 2>/dev/null || true" EXIT
+          for _ in $(seq 1 30); do
+            (echo >/dev/tcp/127.0.0.1/5432) &>/dev/null && break
+            sleep 0.5
+          done
+          export NODE_ENV=production
+          export DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@127.0.0.1:5432/${DB_NAME}"
+          cd apps/medusa
+          npx medusa db:migrate
+
       - name: Build & push Medusa
         if: ${{ github.event.inputs.service == 'both' || github.event.inputs.service == 'medusa' }}
         env:
-          SQL_CONN: ${{ secrets.GCP_PROJECT_ID }}:${{ secrets.GCP_REGION }}:gorumin-db
+          SQL_CONN: ${{ secrets.GCP_PROJECT_ID }}:${{ secrets.GCP_REGION }}:${{ secrets.SQL_INSTANCE }}
         run: |
           IMG="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${AR_REPO}/${MEDUSA_SERVICE}:${{ github.sha }}"
           docker build -f apps/medusa/Dockerfile -t "$IMG" .
