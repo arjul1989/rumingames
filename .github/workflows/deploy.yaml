@@ -57,6 +57,11 @@ jobs:
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
+          STORE_CORS: ${{ secrets.STORE_CORS }}
+          ADMIN_CORS: ${{ secrets.ADMIN_CORS }}
+          AUTH_CORS: ${{ secrets.AUTH_CORS }}
         run: |
           # Runs pending Medusa migrations against production before the new
           # image is deployed, matching what infra/gcp/deploy-prod.sh already
