@@ -127,12 +127,25 @@ export async function runFullFazerCatalogSync(
           summary.kind === "giftcard"
             ? (offer as { stock?: number }).stock ?? null
             : null
-        const marginPct = defaultMargin
-        const saleUsd = salePriceUsd(wholesale, marginPct)
-        const saleCop = computeCopPrice(wholesale, rate, marginPct)
+        const mapping = mappingBySku.get(fazerSkuId)
+        const existingOffers = await supplier.listFazerOffers({ fazer_sku_id: fazerSkuId })
+        const existingOffer = existingOffers[0]
+
+        // A manually-set retail_price_usd (admin override) must survive re-syncs.
+        // Without this, the daily/FX-triggered catalog sync silently discarded any
+        // custom retail price and recomputed it from wholesale * margin instead.
+        const marginPct = mapping?.margin_pct ?? existingOffer?.margin_pct ?? defaultMargin
+        const retailOverrideUsd =
+          existingOffer?.retail_price_usd != null && existingOffer.retail_price_usd > 0
+            ? existingOffer.retail_price_usd
+            : null
+        const saleUsd = retailOverrideUsd ?? salePriceUsd(wholesale, marginPct)
+        const saleCop =
+          retailOverrideUsd != null
+            ? computeCopPrice(retailOverrideUsd, rate, 0)
+            : computeCopPrice(wholesale, rate, marginPct)
         const inStock = summary.kind === "topup" ? true : (stock ?? 0) > 0
         const status = inStock ? ("active" as const) : ("out_of_stock" as const)
-        const mapping = mappingBySku.get(fazerSkuId)
 
         const offerPayload = {
           fazer_sku_id: fazerSkuId,
@@ -159,7 +172,8 @@ export async function runFullFazerCatalogSync(
           platform,
           region,
           image_url: detail.imageurl ?? summary.imageurl ?? null,
-          margin_pct: mapping?.margin_pct ?? marginPct,
+          margin_pct: marginPct,
+          retail_price_usd: retailOverrideUsd,
           enabled: mapping?.enabled ?? true,
           status: mapping?.enabled === false ? ("inactive" as const) : status,
           sale_price_cop: saleCop,
@@ -170,14 +184,12 @@ export async function runFullFazerCatalogSync(
           last_synced_at: new Date(),
         }
 
-        const existingOffers = await supplier.listFazerOffers({ fazer_sku_id: fazerSkuId })
-        if (existingOffers[0]) {
+        if (existingOffer) {
           await supplier.updateFazerOffers([
             {
-              id: existingOffers[0].id,
+              id: existingOffer.id,
               ...offerPayload,
-              margin_pct: existingOffers[0].margin_pct ?? offerPayload.margin_pct,
-              enabled: existingOffers[0].enabled,
+              enabled: existingOffer.enabled,
             },
           ])
         } else {
@@ -203,7 +215,7 @@ export async function runFullFazerCatalogSync(
             stock,
             last_synced_price_usd: wholesale,
             last_synced_price_cop: saleCop,
-            sale_price_usd: salePriceUsd(wholesale, mapping.margin_pct ?? marginPct),
+            sale_price_usd: saleUsd,
             usd_cop_rate: rate,
             status: effectiveStatus,
             last_synced_at: new Date(),
@@ -221,15 +233,13 @@ export async function runFullFazerCatalogSync(
           }
 
           if (mapping.medusa_variant_id && effectiveStatus === "active") {
-            const margin = mapping.margin_pct ?? marginPct
-            const cop = computeCopPrice(wholesale, rate, margin)
             const imageUrl = detail.imageurl ?? summary.imageurl ?? null
             await syncMedusaVariantFromFazer(container, {
               variantId: mapping.medusa_variant_id,
               productId: mapping.medusa_product_id,
               faceValueLabel: offer.name,
               imageUrl,
-              cop,
+              cop: saleCop,
               fazerSkuId,
             })
             pricesUpdated++

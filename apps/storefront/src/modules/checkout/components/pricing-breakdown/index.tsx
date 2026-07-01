@@ -24,7 +24,7 @@ export default function CheckoutPricingBreakdown({ breakdown }: Props) {
         <p className="txt-compact-xsmall-plus uppercase tracking-widest text-ui-fg-subtle">
           Precio en USD
         </p>
-        <p className="txt-xlarge-plus text-ui-fg-base">{fmtUsd(breakdown.total_usd)}</p>
+        <p className="txt-xlarge-plus text-ui-fg-base">{fmtUsd(breakdown.subtotal_usd)}</p>
         <p className="txt-compact-small mt-1 text-ui-fg-subtle">
           Tasa {breakdown.fx_rate.toLocaleString("es-CO")} {currency.toUpperCase()} / USD
         </p>
@@ -98,8 +98,7 @@ export default function CheckoutPricingBreakdown({ breakdown }: Props) {
       <div className="flex items-center justify-between border-t border-ui-border-base pt-3 txt-medium text-ui-fg-base">
         <span>{cartLabels.total}</span>
         <div className="text-right">
-          <div className="txt-xlarge-plus">{fmtUsd(breakdown.total_usd)}</div>
-          <div className="txt-compact-small text-ui-fg-subtle">
+          <div className="txt-xlarge-plus">
             {convertToLocale({
               amount: breakdown.total_local,
               currency_code: currency,
