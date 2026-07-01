@@ -34,35 +34,6 @@ export default function CheckoutPricingBreakdown({ breakdown }: Props) {
 
       <div className="space-y-2 txt-medium text-ui-fg-subtle">
         <div className="flex items-center justify-between">
-          <span>{cartLabels.pricingFaceValueLocal}</span>
-          <span>
-            {convertToLocale({
-              amount: breakdown.face_value_local,
-              currency_code: currency,
-              locale: "es-CO",
-            })}
-          </span>
-        </div>
-
-        {breakdown.margin_local > 0 && (
-          <div className="flex items-center justify-between">
-            <span>
-              {cartLabels.pricingMargin}
-              {breakdown.margin_pct > 0 && (
-                <span className="ml-1 txt-compact-small">({breakdown.margin_pct}%)</span>
-              )}
-            </span>
-            <span>
-              {convertToLocale({
-                amount: breakdown.margin_local,
-                currency_code: currency,
-                locale: "es-CO",
-              })}
-            </span>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between">
           <span>{cartLabels.pricingSubtotalLocal}</span>
           <span>
             {convertToLocale({

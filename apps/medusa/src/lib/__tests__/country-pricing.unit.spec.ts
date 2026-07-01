@@ -69,7 +69,7 @@ describe("country-pricing", () => {
     expect(resolveRetailPriceUsd({ wholesale_price_usd: 10, margin_pct: 15 })).toBe(11.5)
   })
 
-  it("shows face value separate from margin when sale price exceeds denomination", () => {
+  it("uses computeCopPrice for COP subtotal (matches catalog / cart charge)", () => {
     const line = computeLinePricing(
       {
         wholesale_price_usd: 4.6478,
@@ -82,11 +82,26 @@ describe("country-pricing", () => {
     )
 
     expect(line.face_value_usd).toBe(5)
-    expect(line.subtotal_usd).toBe(5.34)
-    expect(line.margin_usd).toBe(0.34)
-    expect(line.face_value_local).toBe(20000)
-    expect(line.margin_local).toBe(1380)
-    expect(line.subtotal_local).toBe(21380)
+    expect(line.subtotal_local).toBe(21400)
+    expect(line.fx_rate).toBe(4280)
+    expect(line.margin_local).toBe(0)
+    expect(line.face_value_local).toBe(21400)
+  })
+
+  it("shows effective FX with margin baked in when face equals wholesale", () => {
+    const line = computeLinePricing(
+      {
+        wholesale_price_usd: 10,
+        margin_pct: 15,
+        face_value_amount: 10,
+        face_value_currency: "USD",
+        quantity: 1,
+      },
+      { fx_rate: 4000, local_currency_code: "cop", taxes: [] }
+    )
+
+    expect(line.subtotal_local).toBe(46000)
+    expect(line.fx_rate).toBe(4600)
   })
 
   it("applies default Wompi commission on cart total base", () => {
