@@ -1,4 +1,4 @@
-# Gorumin — POC de tienda online de videojuegos
+# Gorumin , POC de tienda online de videojuegos
 
 Monorepo de **[gorumin.com](https://gorumin.com)**: una prueba de concepto de e-commerce de **gift cards y recargas de videojuegos** (Steam, PlayStation, Xbox, etc.).
 
@@ -180,4 +180,4 @@ Storefront: `http://localhost:8000/co`
 
 ## Licencia
 
-MIT — basado en [Medusa DTC Starter](https://github.com/medusajs/dtc-starter).
+MIT , basado en [Medusa DTC Starter](https://github.com/medusajs/dtc-starter).
