@@ -18,6 +18,8 @@ El trabajo humano se concentró en el producto y en las decisiones de negocio: p
 
 Sirve como evidencia de que se puede **montar un comercio digital operable con IA**, no un mock de slides: hay APIs reales, estados de orden, reintentos y un camino de compra que se puede ejecutar.
 
+El **Cyber-Hub** (noticias, streamers, recargas) se diseño en **Figma desde Cursor**: tokens semánticos, auto layout, temas dark/light y jobs de color (púrpura / cian / naranja). Es un case study de portafolio, no el storefront de producción. Capturas y patrones: [`docs/design/cyber-hub.md`](docs/design/cyber-hub.md).
+
 ## Qué resuelve
 
 Una tienda de códigos digitales no puede “enviar un paquete”. Tiene que:
@@ -175,6 +177,7 @@ Storefront: `http://localhost:8000/co`
 | Mocks Mercado Pago + Fazer | [`docs/dev-mocks.md`](docs/dev-mocks.md) |
 | Entornos local / sandbox / prod | [`docs/infra/environments.md`](docs/infra/environments.md) |
 | Fondeo por orden (Fazer + Binance) | [`docs/funding/binance-per-order-funding.md`](docs/funding/binance-per-order-funding.md) |
+| Cyber-Hub UI case study (Figma + Cursor) | [`docs/design/cyber-hub.md`](docs/design/cyber-hub.md) |
 
 Épicas e historias (proyecto **RUM**): [tablero Jira](https://rumin.atlassian.net/jira/software/projects/RUM/boards/1)
 
